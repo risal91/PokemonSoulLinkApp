@@ -2,7 +2,7 @@
 import gevent.monkey
 gevent.monkey.patch_all()
 
-from flask import Flask, render_template, request, jsonify, send_from_directory, safe_join
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_socketio import SocketIO, emit
 from models import init_db, SessionLocal, Player, Route, PokemonCatch, GlobalOrder, LevelCap, reset_full_db
 import json
@@ -10,20 +10,24 @@ import os
 import threading
 import time
 import socket
-import zipfile # Neu für Backup/Restore
-import io # Neu für Backup/Restore
+import zipfile
+import io
+import sqlite3 # Für SQLite-Datenbank-Interaktion
 
+# --- App Konfiguration ---
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION'
+# WICHTIG: SECRET_KEY IN PRODUKTION ZU EINEM ZUFÄLLIGEN, LANGEN STRING ÄNDERN!
+app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION' 
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# --- Globale Config-Verwaltung ---
+# --- Globale App-Konfigurationsdaten (aus JSONs) ---
 _app_config_data = {
     "ALL_ROUTES": [],
     "ALL_POKEMON_NAMES": []
 }
 
 def _load_json_data_internal(filename):
+    """Interne Hilfsfunktion zum Laden einer JSON-Datei."""
     filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
     try:
         if not os.path.exists(filepath):
@@ -39,13 +43,16 @@ def _load_json_data_internal(filename):
         return []
 
 def reload_app_configs():
+    """Lädt die globalen Konfigurationen (Routen, Pokemon-Namen) neu aus JSON-Dateien."""
     print("Reloading application configurations (ALL_ROUTES, ALL_POKEMON_NAMES)...")
     _app_config_data["ALL_ROUTES"] = [item['name'] for item in _load_json_data_internal('routes.json')]
     _app_config_data["ALL_POKEMON_NAMES"] = [item['name'] for item in _load_json_data_internal('pokemon_names.json')]
     print(f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data['ALL_POKEMON_NAMES'])} pokemon names.")
     
+# Lade die Configs beim App-Start initial
 reload_app_configs()
 
+# Diese Variablen verweisen auf die Listen in _app_config_data
 ALL_ROUTES = _app_config_data["ALL_ROUTES"]
 ALL_POKEMON_NAMES = _app_config_data["ALL_POKEMON_NAMES"]
 
@@ -53,8 +60,12 @@ ALL_POKEMON_NAMES = _app_config_data["ALL_POKEMON_NAMES"]
 with app.app_context():
     init_db()
 
+# --- Hilfsfunktion für Datenbank-Session ---
 def get_db_session():
     return SessionLocal()
+
+# --- Admin-Passwort für den Import-String ---
+ADMIN_IMPORT_PASSWORD = "ImportJetzt" # <-- DEIN PASSWORT HIER! Wichtig: Sicheres Passwort wählen!
 
 # --- Routen für HTML-Seiten ---
 @app.route('/')
@@ -65,7 +76,7 @@ def index():
 def summary():
     return render_template('summary.html')
 
-# --- API Routen (bestehende) ---
+# --- API Routen (bestehende, unverändert) ---
 @app.route('/api/data')
 def get_all_data():
     session = get_db_session()
@@ -302,6 +313,7 @@ def clear_route_data():
 def full_db_reset():
     try:
         reset_full_db()
+        reload_app_configs() 
         socketio.emit('full_db_reset')
         return jsonify({'message': 'Datenbank vollständig zurückgesetzt.'}), 200
     except Exception as e:
@@ -309,10 +321,9 @@ def full_db_reset():
         return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
 
 
-# NEUE API-ENDPUNKTE FÜR KONFIGURATIONSVERWALTUNG (bestehende, die wir jetzt integrieren)
+# --- API-ENDPUNKTE FÜR KONFIGURATIONSVERWALTUNG ---
 @app.route('/api/config/<filename>', methods=['GET'])
 def get_config_file(filename):
-    """Gibt den Inhalt einer JSON-Konfigurationsdatei zurück."""
     if filename not in ['routes.json', 'pokemon_names.json', 'level_caps.json']:
         return jsonify({'error': 'Unbekannte Konfigurationsdatei'}), 400
     
@@ -328,7 +339,6 @@ def get_config_file(filename):
 
 @app.route('/api/config/<filename>', methods=['POST'])
 def save_config_file(filename):
-    """Speichert den Inhalt einer JSON-Konfigurationsdatei."""
     if filename not in ['routes.json', 'pokemon_names.json', 'level_caps.json']:
         return jsonify({'error': 'Unbekannte Konfigurationsdatei'}), 400
     
@@ -345,7 +355,7 @@ def save_config_file(filename):
             f.write(content)
         
         if filename in ['routes.json', 'pokemon_names.json']:
-            reload_app_configs() # Lädt nur die in-memory Listen neu
+            reload_app_configs()
 
         socketio.emit('config_saved', {'filename': filename})
         return jsonify({'message': f'Datei {filename} erfolgreich gespeichert.'}), 200
@@ -361,51 +371,39 @@ def reload_configs_api():
     socketio.emit('configs_reloaded')
     return jsonify({'message': 'App-Konfigurationen neu geladen.'}), 200
 
-# NEUE API-ENDPUNKTE FÜR BACKUP UND RESTORE
+# --- API-ENDPUNKTE FÜR DATEI-BACKUP UND DATEI-RESTORE (ZIP-Datei) ---
 @app.route('/api/backup', methods=['GET'])
-def backup_data():
+def backup_data_zip():
     """Erstellt ein ZIP-Archiv mit Datenbank und JSON-Konfigurationsdateien zum Download."""
     try:
-        # Pfade zu den zu sichernden Dateien
         base_dir = os.path.dirname(os.path.abspath(__file__))
         db_path = os.path.join(base_dir, 'soul_link_challenge.db')
-        routes_json_path = os.path.join(base_dir, 'routes.json')
-        pokemon_names_json_path = os.path.join(base_dir, 'pokemon_names.json')
-        level_caps_json_path = os.path.join(base_dir, 'level_caps.json')
-
-        # Überprüfen, ob die Dateien existieren, bevor sie dem Zip hinzugefügt werden
-        files_to_zip = []
-        if os.path.exists(db_path):
-            files_to_zip.append(('soul_link_challenge.db', db_path))
-        if os.path.exists(routes_json_path):
-            files_to_zip.append(('routes.json', routes_json_path))
-        if os.path.exists(pokemon_names_json_path):
-            files_to_zip.append(('pokemon_names.json', pokemon_names_json_path))
-        if os.path.exists(level_caps_json_path):
-            files_to_zip.append(('level_caps.json', level_caps_json_path))
-
-        # Erstelle das ZIP-Archiv im Speicher
+        
+        json_filenames = ['routes.json', 'pokemon_names.json', 'level_caps.json']
+        
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for arcname, fpath in files_to_zip:
-                zip_file.write(fpath, arcname) # fügt Datei zum Zip hinzu
+            if os.path.exists(db_path):
+                zip_file.write(db_path, os.path.basename(db_path))
+            else:
+                print(f"Warning: Database file not found at {db_path} during backup.")
 
-        zip_buffer.seek(0) # Setze den Zeiger an den Anfang des Puffers
+            for filename in json_filenames:
+                file_path = os.path.join(base_dir, filename)
+                if os.path.exists(file_path):
+                    zip_file.write(file_path, os.path.basename(file_path))
+                else:
+                    print(f"Warning: JSON file {filename} not found at {file_path} during backup.")
 
-        return send_from_directory(
-            directory=os.path.dirname(zip_buffer.name) if hasattr(zip_buffer, 'name') else '.', # send_from_directory expects a directory
-            path='backup.zip', # The actual filename the user will download
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name='pokemon_soul_link_backup.zip'
-        )
-        # return Response(zip_buffer.getvalue(), mimetype='application/zip', headers={"Content-disposition": "attachment; filename=pokemon_soul_link_backup.zip"})
+        zip_buffer.seek(0)
+        return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name='pokemon_soul_link_backup.zip')
+
     except Exception as e:
-        print(f"Fehler beim Erstellen des Backups: {e}")
-        return jsonify({'error': f'Fehler beim Erstellen des Backups: {str(e)}'}), 500
+        print(f"Fehler beim Erstellen des ZIP-Backups: {e}")
+        return jsonify({'error': f'Fehler beim Erstellen des ZIP-Backups: {str(e)}'}), 500
 
 @app.route('/api/restore', methods=['POST'])
-def restore_data():
+def restore_data_zip():
     """Lädt ein ZIP-Archiv hoch, extrahiert es und ersetzt Datenbank/JSON-Dateien."""
     if 'backup_file' not in request.files:
         return jsonify({'error': 'Keine Datei hochgeladen'}), 400
@@ -414,53 +412,158 @@ def restore_data():
     if backup_file.filename == '':
         return jsonify({'error': 'Leere Datei hochgeladen'}), 400
     
-    # Sicherheitscheck: Nur ZIP-Dateien erlauben
     if not backup_file.filename.lower().endswith('.zip'):
         return jsonify({'error': 'Nur ZIP-Dateien sind erlaubt'}), 400
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     
     try:
-        # Lese die hochgeladene ZIP-Datei in einen BytesIO-Puffer
         zip_buffer_in = io.BytesIO(backup_file.read())
         
         with zipfile.ZipFile(zip_buffer_in, 'r') as zip_ref:
-            # Überprüfe den Inhalt des ZIP-Archivs auf unerwartete Dateien oder Pfade (Zip Slip Prevention)
-            allowed_files = ['soul_link_challenge.db', 'routes.json', 'pokemon_names.json', 'level_caps.json']
-            for member in zip_ref.namelist():
-                # Sicherheitsprüfung: Stelle sicher, dass Pfade nicht außerhalb des Zielverzeichnisses gehen
-                member_path = os.path.join(base_dir, member)
-                if not member_path.startswith(base_dir): # Verhindert Zip Slip
-                    raise Exception(f"Ungültiger Pfad in ZIP-Datei: {member}")
-                
-                # Stelle sicher, dass nur erlaubte Dateien extrahiert werden
-                if os.path.basename(member) not in allowed_files:
-                    raise Exception(f"Unerlaubte Datei in ZIP-Archiv: {os.path.basename(member)}")
+            allowed_base_filenames = ['soul_link_challenge.db', 'routes.json', 'pokemon_names.json', 'level_caps.json']
 
-            # Extrahiere die Dateien sicher
             for member in zip_ref.namelist():
-                # Extrahiere nur die Dateien in das Basisverzeichnis
-                target_path = os.path.join(base_dir, os.path.basename(member)) # Nur Dateiname, kein Unterverzeichnis
+                member_filename = os.path.basename(member) 
+                
+                if member_filename not in allowed_base_filenames:
+                    raise Exception(f"Unerlaubte Datei in ZIP-Archiv: {member_filename}")
+                
+                target_path = os.path.join(base_dir, member_filename)
                 with open(target_path, "wb") as outfile:
                     outfile.write(zip_ref.read(member))
 
-        # Nach dem Restore:
-        # 1. Datenbank neu initialisieren (optional, aber gut um Schema-Konsistenz zu gewährleisten)
-        #    Oder einfach nur die Python-Variablen neu laden und die DB-Verbindung refreshen.
-        #    Wenn eine neue DB-Datei hochgeladen wurde, ist reset_full_db am besten.
-        #    Wenn der DB-Inhalt in der Datei master ist, dann ist reset_full_db der Weg.
-        reset_full_db() # Datenbank-Inhalte und Schemas werden aus den JSONs neu geladen
+        SessionLocal().close_all() 
+        reload_app_configs() 
 
-        # 2. App-Konfigurationen aus den JSON-Dateien neu laden
-        reload_app_configs()
-
-        socketio.emit('restore_completed') # SocketIO-Event senden
+        socketio.emit('restore_completed')
         return jsonify({'message': 'Daten erfolgreich wiederhergestellt.'}), 200
     except zipfile.BadZipFile:
         return jsonify({'error': 'Ungültiges ZIP-Archiv.'}), 400
     except Exception as e:
         print(f"Fehler beim Wiederherstellen der Daten: {e}")
-        return jsonify({'error': f'Fehler beim Wiederherstellen der Daten: {str(e)}'}), 500
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
+
+# NEUE API-ENDPUNKTE FÜR STRING-EXPORT/IMPORT
+@app.route('/api/export_all_data_string', methods=['GET'])
+def export_all_data_string():
+    """Exportiert alle Konfigurations-JSONs und den DB-Inhalt (SQL-Dump) als JSON-String."""
+    try:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # 1. JSON-Dateien lesen
+        config_data = {}
+        json_filenames = ['routes.json', 'pokemon_names.json', 'level_caps.json']
+        for filename in json_filenames:
+            filepath = os.path.join(base_dir, filename)
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    config_data[filename] = f.read()
+            else:
+                config_data[filename] = "[]" # Standardleerer JSON-Array als String
+        
+        # 2. SQLite-Datenbank dumpen
+        db_path = os.path.join(base_dir, 'soul_link_challenge.db')
+        if not os.path.exists(db_path):
+            return jsonify({'error': 'Datenbankdatei nicht gefunden für Export.'}), 404
+        
+        conn = None
+        db_dump_sql = ""
+        try:
+            conn = sqlite3.connect(db_path)
+            # Use .iterdump() for a complete SQL dump
+            db_dump_sql = "\n".join(conn.iterdump())
+        except Exception as e:
+            print(f"Fehler beim Erstellen des DB-Dumps: {e}")
+            return jsonify({'error': f'Fehler beim Erstellen des DB-Dumps: {str(e)}'}), 500
+        finally:
+            if conn:
+                conn.close()
+
+        # 3. Alles in einem JSON-Objekt zusammenfassen
+        all_data = {
+            "config": config_data,
+            "database_dump_sql": db_dump_sql
+        }
+        
+        return jsonify(all_data), 200 # Gebe es als JSON zurück
+    except Exception as e:
+        print(f"Fehler beim Exportieren aller Daten als String: {e}")
+        return jsonify({'error': f'Fehler beim Exportieren: {str(e)}'}), 500
+
+@app.route('/api/import_all_data_string', methods=['POST'])
+def import_all_data_string():
+    """Importiert alle Konfigurations-JSONs und den DB-Inhalt (SQL-Dump) aus einem JSON-String."""
+    data = request.json
+    import_string = data.get('data_string')
+    password = data.get('password') # <-- Passwort hier abfragen
+
+    if not import_string or not password:
+        return jsonify({'error': 'Daten-String oder Passwort fehlen.'}), 400
+    
+    # Passwort-Prüfung
+    if password != ADMIN_IMPORT_PASSWORD:
+        return jsonify({'error': 'Falsches Passwort.'}), 403 # 403 Forbidden
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_path = os.path.join(base_dir, 'soul_link_challenge.db')
+
+    try:
+        parsed_data = json.loads(import_string)
+        config_data = parsed_data.get('config', {})
+        db_dump_sql = parsed_data.get('database_dump_sql', "")
+
+        # 1. JSON-Konfigurationsdateien schreiben
+        json_filenames = ['routes.json', 'pokemon_names.json', 'level_caps.json']
+        for filename in json_filenames:
+            if filename in config_data:
+                filepath = os.path.join(base_dir, filename)
+                try:
+                    json.loads(config_data[filename]) 
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        f.write(config_data[filename])
+                except json.JSONDecodeError:
+                    raise Exception(f"Ungültiges JSON-Format für {filename} im Import-String.")
+                except Exception as e:
+                    raise Exception(f"Fehler beim Schreiben von {filename} während des Imports: {str(e)}")
+
+        # 2. Datenbank wiederherstellen
+        SessionLocal().close_all() # Schließe alle aktiven DB-Sessions
+
+        if os.path.exists(db_path):
+            os.remove(db_path)
+            print(f"Alte Datenbankdatei {db_path} gelöscht.")
+        
+        # Datenbank neu initialisieren (Schema wird erstellt)
+        init_db() 
+        
+        # Führe den SQL-Dump aus, um die Daten einzufügen
+        if db_dump_sql:
+            conn = None
+            try:
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
+                cursor.executescript(db_dump_sql) # Führt alle SQL-Befehle aus
+                conn.commit()
+                print("Datenbank aus SQL-Dump wiederhergestellt.")
+            except Exception as e:
+                # WICHTIG: Wenn der Dump fehlschlägt, ist die DB möglicherweise inkonsistent
+                print(f"Fehler beim Ausführen des SQL-Dumps: {e}")
+                raise Exception(f"Fehler beim Ausführen des SQL-Dumps: {str(e)}")
+            finally:
+                if conn:
+                    conn.close()
+
+        # 3. App-Konfigurationen im Speicher neu laden
+        reload_app_configs()
+
+        socketio.emit('import_completed') # SocketIO-Event senden
+        return jsonify({'message': 'Daten erfolgreich aus String wiederhergestellt.'}), 200
+    except json.JSONDecodeError as e:
+        return jsonify({'error': f'Ungültiges JSON-Format des Import-Strings: {str(e)}'}), 400
+    except Exception as e:
+        print(f"Fehler beim Importieren aller Daten aus String: {e}")
+        return jsonify({'error': f'Fehler beim Importieren: {str(e)}'}), 500
 
 @socketio.on('connect')
 def handle_connect():
