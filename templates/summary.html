@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soul Link Kurzansicht</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            color: #2d3748;
+        }
+        .main-content-wrapper { /* NEU: Wrapper für Zoom */
+            transform-origin: top center; /* Skaliert von oben/Mitte */
+        }
+        .container {
+            max-width: 900px;
+        }
+        .player-section {
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .player-section h3 {
+            background-color: #dbeafe;
+            color: #1e40af;
+            padding: 0.75rem 1.5rem;
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            font-weight: 700;
+        }
+        .player-routes {
+            padding: 1rem 1.5rem;
+        }
+        .route-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* Vertikal zentrieren */
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed #e2e8f0;
+        }
+        .route-item:last-child {
+            border-bottom: none;
+        }
+        .route-name {
+            font-weight: 600;
+            flex-shrink: 0;
+            padding-right: 0.5rem;
+        }
+        /* .pokemon-name { /* Wird jetzt durch Dropdown ersetzt, diese Klasse ist für den Text nicht mehr primär */
+            font-weight: 600;
+            color: #4a5568;
+            flex-grow: 1;
+            text-align: right;
+        } */
+        .level-cap-display-summary {
+            background-color: #d1fae5;
+            color: #065f46;
+            border: 1px solid #34d399;
+        }
+        /* CSS-KLASSEN FÜR ROUTEN-STATUS (in Summary) */
+        .route-status-orange {
+            background-color: #ffedd5; /* Very light orange */
+            color: #c2410c; /* Darker orange */
+        }
+        .route-status-red {
+            background-color: #fee2e2; /* Very light red */
+            color: #b91c1c; /* Darker red */
+        }
+
+        /* Custom Dropdown Styles (angepasst für Summary) */
+        .custom-select-container {
+            position: relative;
+            width: auto; /* Anpassen für kompaktere Darstellung */
+            min-width: 120px; /* Mindestbreite */
+        }
+        .custom-select-input {
+            width: 100%;
+            padding: 0.4rem 0.6rem; /* Kleineres Padding */
+            border: 1px solid #ccc;
+            border-radius: 0.375rem;
+            background-color: #fff;
+            cursor: pointer;
+            text-align: left;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem; /* Kleinere Schrift */
+        }
+        .custom-select-input::after {
+            content: '▼';
+            font-size: 0.6rem;
+            color: #4a5568;
+            margin-left: 0.25rem;
+        }
+        .custom-select-options {
+            position: absolute;
+            width: 100%;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 0.375rem;
+            max-height: 200px; /* Kann angepasst werden */
+            overflow-y: auto;
+            z-index: 1000;
+            margin-top: 0.25rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        .custom-select-options.active {
+            display: block;
+        }
+        .custom-select-option {
+            padding: 0.4rem 0.6rem; /* Kleineres Padding */
+            cursor: pointer;
+            line-height: 1.5;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-size: 0.875rem; /* Kleinere Schrift */
+        }
+        .custom-select-option:hover {
+            background-color: #f0f4f8;
+        }
+        .custom-select-option.selected {
+            background-color: #e0e7ff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-6">
+    <div class="main-content-wrapper"> <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
+            <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Soul Link Kurzansicht</h1>
+
+            <nav class="text-center mb-6 flex justify-center items-center gap-4">
+                <a href="/" class="text-blue-600 hover:text-blue-800 text-lg font-medium px-4 py-2 rounded-md bg-blue-100 hover:bg-blue-200 transition duration-300">Zur Hauptansicht</a>
+                <button id="zoomOutBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">- Zoom</button>
+                <button id="zoomInBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">+ Zoom</button>
+                <button id="resetZoomBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">Reset Zoom</button>
+            </nav>
+
+            <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold text-green-700 p-4 mb-8 bg-green-100 rounded-md shadow-inner hidden level-cap-display-summary">
+                Nächstes Level Cap: <span id="summaryCurrentLevelCapMax" class="text-green-800"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted" class="text-green-800"></span>)
+            </div>
+
+            <div id="playerSummaryContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                </div>
+            <div id="noDataMessage" class="hidden text-center text-gray-500 mt-10">
+                Lade Daten... Wenn dies zu lange dauert, sind möglicherweise keine Spieler oder Routen vorhanden, oder der Server ist nicht erreichbar.
+            </div>
+        </div>
+    </div> <script>
+        const socket = io();
+        let players = [];
+        let routes = [];
+        let catches = [];
+        let globalOrders = [];
+        let levelCaps = [];
+        let allPokemonNames = []; // Wird jetzt auch in Summary benötigt
+        let currentZoom = 1.0;
+        const zoomStep = 0.1;
+        const mainContentWrapper = document.querySelector('.main-content-wrapper');
+
+
+        const playerSummaryContainer = document.getElementById('playerSummaryContainer');
+        const noDataMessage = document.getElementById('noDataMessage');
+        const summaryLevelCapDisplay = document.getElementById('summaryLevelCapDisplay');
+        const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
+        const summaryCurrentLevelCapAdjusted = document.getElementById('summaryCurrentLevelCapAdjusted');
+
+        // --- Zoom Funktionen ---
+        function applyZoom() {
+            mainContentWrapper.style.transform = `scale(${currentZoom})`;
+            mainContentWrapper.style.width = `${100 / currentZoom}%`;
+            mainContentWrapper.style.height = `${100 / currentZoom}%`;
+        }
+
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            currentZoom += zoomStep;
+            applyZoom();
+        });
+
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            currentZoom = Math.max(0.5, currentZoom - zoomStep); // Minimaler Zoom 0.5
+            applyZoom();
+        });
+
+        document.getElementById('resetZoomBtn').addEventListener('click', () => {
+            currentZoom = 1.0;
+            applyZoom();
+        });
+
+
+        // --- Custom Dropdown Logic ---
+        // Diese Funktion ist generisch und wird jetzt direkt mit den Element-Referenzen aufgerufen
+        function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
+            const container = containerElement;
+            const input = inputElement;
+            const optionsDiv = optionsElement;
+            const optionsList = optionsListElement;
+            const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null; // Suchfeld nur suchen, wenn es erwartet wird
+
+            let selectedValue = null;
+            let currentItems = initialItemsArray;
+
+            function renderOptions(filter = '') {
+                optionsList.innerHTML = '';
+                const filteredItems = currentItems.filter(item =>
+                    item.toLowerCase().includes(filter.toLowerCase())
+                ).sort();
+
+                if (filteredItems.length === 0) {
+                    const noResult = document.createElement('div');
+                    noResult.className = 'custom-select-option text-gray-500 italic';
+                    noResult.textContent = 'Keine Ergebnisse gefunden.';
+                    optionsList.appendChild(noResult);
+                    return;
+                }
+
+                filteredItems.forEach(item => {
+                    const option = document.createElement('div');
+                    option.className = 'custom-select-option';
+                    if (item === selectedValue) {
+                        option.classList.add('selected');
+                    }
+                    option.textContent = item;
+                    option.dataset.value = item;
+                    option.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        input.textContent = item;
+                        selectedValue = item;
+                        optionsDiv.classList.remove('active');
+                        if (onSelectCallback) {
+                            onSelectCallback(item);
+                        }
+                    });
+                    optionsList.appendChild(option);
+                });
+            }
+
+            input.addEventListener('click', (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
+                    if (openDiv !== optionsDiv && !openDiv.contains(e.target)) {
+                         openDiv.classList.remove('active');
+                    }
+                });
+                optionsDiv.classList.toggle('active');
+                if (searchInput) searchInput.value = '';
+                renderOptions(searchInput ? searchInput.value : '');
+                if (searchInput) searchInput.focus();
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    renderOptions(e.target.value);
+                });
+            }
+
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) {
+                    optionsDiv.classList.remove('active');
+                }
+                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
+                    if (!openDiv.closest('.custom-select-container').contains(e.target)) {
+                        openDiv.classList.remove('active');
+                    }
+                });
+            });
+
+            input.textContent = searchPlaceholder;
+            renderOptions();
+            return {
+                getSelectedValue: () => selectedValue,
+                setSelectedValue: (value) => {
+                    selectedValue = value;
+                    input.textContent = value || searchPlaceholder;
+                    renderOptions();
+                },
+                reset: () => {
+                    selectedValue = null;
+                    input.textContent = searchPlaceholder;
+                    if (searchInput) searchInput.value = '';
+                    renderOptions();
+                },
+                updateItems: (newItems) => {
+                    currentItems = newItems;
+                    renderOptions(searchInput ? searchInput.value : '');
+                }
+            };
+        }
+
+        // --- Funktion für Pokémon-Dropdown in Summary ---
+        function createPokemonDropdownSummary(parentElement, initialValue, playerId, routeId) {
+            const container = document.createElement('div');
+            container.className = 'custom-select-container';
+
+            const input = document.createElement('div');
+            input.className = 'custom-select-input text-sm';
+            input.textContent = initialValue || 'Pokémon eintragen';
+            input.tabIndex = 0;
+            container.appendChild(input);
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'custom-select-options';
+            container.appendChild(optionsDiv);
+
+            const searchInput = document.createElement('input'); // Suchfeld im HTML erstellen
+            searchInput.type = 'text';
+            searchInput.className = 'custom-select-search';
+            searchInput.placeholder = 'Suche Pokémon...';
+            optionsDiv.appendChild(searchInput);
+
+            const optionsList = document.createElement('div');
+            optionsList.className = 'options-list';
+            optionsDiv.appendChild(optionsList);
+
+            parentElement.appendChild(container); // Füge Container zum DOM hinzu
+
+            const dropdown = setupCustomDropdown(
+                container, // Direkte Referenz
+                input,
+                optionsDiv,
+                optionsList,
+                'Pokémon eintragen',
+                allPokemonNames, // Nutze die globale allPokemonNames
+                async (selectedPokemonName) => {
+                    await updateCatchOnServer(playerId, routeId, selectedPokemonName);
+                },
+                true // hasSearch = true für Pokémon-Dropdown
+            );
+
+            dropdown.setSelectedValue(initialValue);
+            return dropdown;
+        }
+
+        async function updateCatchOnServer(playerId, routeId, pokemonName) {
+            try {
+                const response = await fetch('/api/update_catch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Fehler beim Aktualisieren des Fangs:', errorData.error);
+                }
+            } catch (error) {
+                console.error('Netzwerkfehler beim Aktualisieren des Fangs:', error);
+            }
+        }
+
+        // Funktion zum Erstellen des Status-Dropdowns für eine Route (in summary.html)
+        function createStatusDropdownSummary(parentElement, initialStatus, routeId) {
+            const statusOptions = [
+                "", // Leerzeile
+                "Death Link",
+                "No Catch",
+                ...players.map(player => `Death (${player.name})`)
+            ];
+
+            const containerDiv = document.createElement('div');
+            containerDiv.id = `status-dropdown-summary-container-${routeId}`; // Setze ID, falls benötigt
+            containerDiv.className = 'custom-select-container';
+
+            const inputDiv = document.createElement('div');
+            inputDiv.id = `status-dropdown-summary-input-${routeId}`; // Setze ID
+            inputDiv.className = 'custom-select-input text-sm';
+            inputDiv.tabIndex = 0;
+            containerDiv.appendChild(inputDiv);
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.id = `status-dropdown-summary-options-${routeId}`; // Setze ID
+            optionsDiv.className = 'custom-select-options';
+
+            const optionsListDiv = document.createElement('div');
+            optionsListDiv.className = 'options-list';
+            optionsDiv.appendChild(optionsListDiv);
+            containerDiv.appendChild(optionsDiv);
+
+            parentElement.appendChild(containerDiv); // Füge den kompletten Container dem ParentElement hinzu
+
+
+            const dropdown = setupCustomDropdown(
+                containerDiv,    // containerElement
+                inputDiv,        // inputElement
+                optionsDiv,      // optionsElement
+                optionsListDiv,  // optionsListElement
+                'Status',
+                statusOptions,
+                async (selectedStatus) => {
+                    try {
+                        const response = await fetch('/api/update_route_status', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ route_id: routeId, status_text: selectedStatus })
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            console.error('Fehler beim Aktualisieren des Routenstatus:', errorData.error);
+                        }
+                    } catch (error) {
+                        console.error('Netzwerkfehler beim Aktualisieren des Routenstatus:', error);
+                    }
+                },
+                false // hasSearch = false für Status-Dropdown
+            );
+
+            if (dropdown) {
+                dropdown.setSelectedValue(initialStatus);
+            } else {
+                console.error(`Fehler: Dropdown für Route ${routeId} konnte nicht initialisiert werden.`);
+            }
+            return dropdown;
+        }
+
+
+        // --- Daten vom Server abrufen und rendern ---
+        async function fetchDataAndRenderSummary() {
+            noDataMessage.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/api/data');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                players = data.players;
+                routes = data.routes;
+                catches = data.catches;
+                globalOrders = data.global_orders;
+                levelCaps = data.level_caps;
+                allPokemonNames = data.all_pokemon_names; // Initialisiere allPokemonNames
+
+
+                renderPlayerSummaries();
+                renderSummaryLevelCap();
+
+                if (players.length > 0 || routes.length > 0) {
+                    noDataMessage.classList.add('hidden');
+                } else {
+                    noDataMessage.textContent = 'Keine Spieler oder Routen vorhanden. Bitte füge welche in der Hauptansicht hinzu.';
+                    noDataMessage.classList.remove('hidden');
+                }
+
+            } catch (error) {
+                console.error('Fehler beim Abrufen der Daten für Kurzansicht:', error);
+                noDataMessage.textContent = 'Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.';
+                noDataMessage.classList.remove('hidden');
+            }
+        }
+
+        function renderPlayerSummaries() {
+            playerSummaryContainer.innerHTML = '';
+
+            if (players.length === 0) {
+                return;
+            }
+
+            const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+
+            sortedPlayers.forEach(player => {
+                const playerSection = document.createElement('div');
+                playerSection.className = 'player-section p-0';
+
+                const playerNameHeader = document.createElement('h3');
+                playerNameHeader.className = 'text-xl text-blue-700 mb-2 font-bold';
+                playerNameHeader.textContent = player.name;
+                playerSection.appendChild(playerNameHeader);
+
+                const playerRoutesDiv = document.createElement('div');
+                playerRoutesDiv.className = 'player-routes';
+                playerSection.appendChild(playerRoutesDiv);
+
+                const sortedRoutes = [...routes].sort((a, b) => a.name.localeCompare(b.name));
+
+                sortedRoutes.forEach(route => {
+                    const routeItem = document.createElement('div');
+                    routeItem.className = 'route-item grid grid-cols-[1fr_1fr_min-content] gap-2 items-center'; // 3 Spalten für Route, Pokemon, Status (kein extra Clear-Button hier)
+
+                    const routeNameSpan = document.createElement('span');
+                    routeNameSpan.className = 'route-name text-gray-700';
+                    routeNameSpan.textContent = route.name + ':';
+
+                    routeNameSpan.classList.remove('route-status-orange', 'route-status-red');
+                    if (route.status === "Death Link" || route.status === "No Catch") {
+                        routeNameSpan.classList.add('route-status-orange');
+                    } else if (route.status.startsWith("Death (")) {
+                        routeNameSpan.classList.add('route-status-red');
+                    }
+
+                    routeItem.appendChild(routeNameSpan);
+
+                    // Pokémon-Dropdown statt nur Text
+                    const pokemonDropdownContainer = document.createElement('div');
+                    pokemonDropdownContainer.className = 'pokemon-dropdown-summary';
+                    const existingCatch = catches.find(c => c.player_id === player.id && c.route_id === route.id);
+                    const pokemonName = existingCatch ? existingCatch.pokemon_name : null;
+                    createPokemonDropdownSummary(pokemonDropdownContainer, pokemonName, player.id, route.id);
+                    routeItem.appendChild(pokemonDropdownContainer);
+
+                    const statusDropdownContainer = document.createElement('div');
+                    statusDropdownContainer.className = 'status-dropdown-summary';
+                    createStatusDropdownSummary(statusDropdownContainer, route.status, route.id);
+                    routeItem.appendChild(statusDropdownContainer);
+
+                    // KEINE Clear-Buttons pro Route in Summary mehr
+                    playerRoutesDiv.appendChild(routeItem);
+                });
+                playerSummaryContainer.appendChild(playerSection);
+            });
+        }
+
+        function renderSummaryLevelCap() {
+            levelCaps.sort((a, b) => a.order_number - b.order_number);
+
+            let lastObtainedOrderNumber = 0;
+            globalOrders.forEach(go => {
+                if (go.is_obtained && go.order_number > lastObtainedOrderNumber) {
+                    lastObtainedOrderNumber = go.order_number;
+                }
+            });
+
+            let nextLevelCap = null;
+            nextLevelCap = levelCaps.find(lc => {
+                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
+                return !(globalOrder && globalOrder.is_obtained);
+            });
+
+            if (!nextLevelCap && levelCaps.length > 0) {
+                nextLevelCap = levelCaps[levelCaps.length - 1];
+            }
+
+            if (nextLevelCap) {
+                summaryCurrentLevelCapMax.textContent = nextLevelCap.max_level;
+                summaryCurrentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
+                summaryLevelCapDisplay.classList.remove('hidden');
+            } else {
+                summaryLevelCapDisplay.classList.add('hidden');
+            }
+        }
+
+        // --- SocketIO Event Listener (für Echtzeit-Updates) ---
+        socket.on('connect', () => {
+            console.log('Verbunden mit dem Server über SocketIO (Kurzansicht)!');
+            fetchDataAndRenderSummary();
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Verbindung zum Server getrennt (Kurzansicht).');
+        });
+
+        socket.on('player_added', () => {
+            fetchDataAndRenderSummary();
+        });
+        socket.on('route_added', () => {
+            fetchDataAndRenderSummary();
+        });
+        socket.on('catch_updated', () => {
+            fetchDataAndRenderSummary();
+        });
+        socket.on('global_order_toggled', () => {
+            fetchDataAndRenderSummary();
+        });
+        socket.on('route_status_updated', () => {
+            fetchDataAndRenderSummary();
+        });
+        socket.on('all_data_reset', () => {
+            console.log('Alle Daten zurückgesetzt (SocketIO)!');
+            fetchDataAndRenderSummary();
+        });
+        socket.on('route_data_cleared', (data) => {
+            console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
+            fetchDataAndRenderSummary();
+        });
+
+    </script>
+</body>
+</html>
