@@ -39,6 +39,7 @@
   { "name": "Duellpark" },
   { "name": "Duellturm" },
   { "name": "Eisberg-Ruinen" },
+  { "name": "Ewigenau" },
   { "name": "Eiseninsel" },
   { "name": "Eisen-Ruinen" },
   { "name": "Erzelingen-Mine" },
@@ -83,5 +84,6 @@
   { "name": "Wahrheitsgrotte" },
   { "name": "Wahrheitsufer" },
   { "name": "Windkraftwerk" },
+  { "name": "Zweiblattdorf" },
   { "name": "Zerrwelt" }
 ]
