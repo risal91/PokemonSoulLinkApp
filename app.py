@@ -1,12 +1,16 @@
 # app.py
+import gevent.monkey
+gevent.monkey.patch_all()
+
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
-from models import init_db, SessionLocal, Player, Route, PokemonCatch, GlobalOrder, LevelCap, reset_full_db # NEU: reset_full_db importieren
+from models import init_db, SessionLocal, Player, Route, PokemonCatch, GlobalOrder, LevelCap, reset_full_db
 import json
 import os
 import threading
 import time
 import socket
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION'
