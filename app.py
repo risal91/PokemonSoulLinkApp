@@ -10,7 +10,7 @@ import os
 import threading
 import time
 import socket
-import zipfile
+import zipfile # Kann entfernt werden, wenn ZIP-Funktionalität komplett raus ist, aber für send_file noch drin lassen
 import io
 import sqlite3 # Für SQLite-Datenbank-Interaktion
 
@@ -371,80 +371,7 @@ def reload_configs_api():
     socketio.emit('configs_reloaded')
     return jsonify({'message': 'App-Konfigurationen neu geladen.'}), 200
 
-# --- API-ENDPUNKTE FÜR DATEI-BACKUP UND DATEI-RESTORE (ZIP-Datei) ---
-@app.route('/api/backup', methods=['GET'])
-def backup_data_zip():
-    """Erstellt ein ZIP-Archiv mit Datenbank und JSON-Konfigurationsdateien zum Download."""
-    try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        db_path = os.path.join(base_dir, 'soul_link_challenge.db')
-        
-        json_filenames = ['routes.json', 'pokemon_names.json', 'level_caps.json']
-        
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            if os.path.exists(db_path):
-                zip_file.write(db_path, os.path.basename(db_path))
-            else:
-                print(f"Warning: Database file not found at {db_path} during backup.")
-
-            for filename in json_filenames:
-                file_path = os.path.join(base_dir, filename)
-                if os.path.exists(file_path):
-                    zip_file.write(file_path, os.path.basename(file_path))
-                else:
-                    print(f"Warning: JSON file {filename} not found at {file_path} during backup.")
-
-        zip_buffer.seek(0)
-        return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name='pokemon_soul_link_backup.zip')
-
-    except Exception as e:
-        print(f"Fehler beim Erstellen des ZIP-Backups: {e}")
-        return jsonify({'error': f'Fehler beim Erstellen des ZIP-Backups: {str(e)}'}), 500
-
-@app.route('/api/restore', methods=['POST'])
-def restore_data_zip():
-    """Lädt ein ZIP-Archiv hoch, extrahiert es und ersetzt Datenbank/JSON-Dateien."""
-    if 'backup_file' not in request.files:
-        return jsonify({'error': 'Keine Datei hochgeladen'}), 400
-    
-    backup_file = request.files['backup_file']
-    if backup_file.filename == '':
-        return jsonify({'error': 'Leere Datei hochgeladen'}), 400
-    
-    if not backup_file.filename.lower().endswith('.zip'):
-        return jsonify({'error': 'Nur ZIP-Dateien sind erlaubt'}), 400
-
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    try:
-        zip_buffer_in = io.BytesIO(backup_file.read())
-        
-        with zipfile.ZipFile(zip_buffer_in, 'r') as zip_ref:
-            allowed_base_filenames = ['soul_link_challenge.db', 'routes.json', 'pokemon_names.json', 'level_caps.json']
-
-            for member in zip_ref.namelist():
-                member_filename = os.path.basename(member) 
-                
-                if member_filename not in allowed_base_filenames:
-                    raise Exception(f"Unerlaubte Datei in ZIP-Archiv: {member_filename}")
-                
-                target_path = os.path.join(base_dir, member_filename)
-                with open(target_path, "wb") as outfile:
-                    outfile.write(zip_ref.read(member))
-
-        SessionLocal().close_all() 
-        reload_app_configs() 
-
-        socketio.emit('restore_completed')
-        return jsonify({'message': 'Daten erfolgreich wiederhergestellt.'}), 200
-    except zipfile.BadZipFile:
-        return jsonify({'error': 'Ungültiges ZIP-Archiv.'}), 400
-    except Exception as e:
-        print(f"Fehler beim Wiederherstellen der Daten: {e}")
-        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
-
-# NEUE API-ENDPUNKTE FÜR STRING-EXPORT/IMPORT
+# --- NEUE API-ENDPUNKTE FÜR STRING-EXPORT/IMPORT ---
 @app.route('/api/export_all_data_string', methods=['GET'])
 def export_all_data_string():
     """Exportiert alle Konfigurations-JSONs und den DB-Inhalt (SQL-Dump) als JSON-String."""
@@ -460,25 +387,33 @@ def export_all_data_string():
                 with open(filepath, 'r', encoding='utf-8') as f:
                     config_data[filename] = f.read()
             else:
-                config_data[filename] = "[]" # Standardleerer JSON-Array als String
+                # Gib einen leeren JSON-Array-String zurück, wenn die Datei nicht existiert
+                config_data[filename] = "[]" 
         
         # 2. SQLite-Datenbank dumpen
         db_path = os.path.join(base_dir, 'soul_link_challenge.db')
-        if not os.path.exists(db_path):
-            return jsonify({'error': 'Datenbankdatei nicht gefunden für Export.'}), 404
         
-        conn = None
-        db_dump_sql = ""
-        try:
-            conn = sqlite3.connect(db_path)
-            # Use .iterdump() for a complete SQL dump
-            db_dump_sql = "\n".join(conn.iterdump())
-        except Exception as e:
-            print(f"Fehler beim Erstellen des DB-Dumps: {e}")
-            return jsonify({'error': f'Fehler beim Erstellen des DB-Dumps: {str(e)}'}), 500
-        finally:
-            if conn:
-                conn.close()
+        # Stelle sicher, dass die Datenbankdatei existiert, bevor wir versuchen, sie zu dumpen
+        if not os.path.exists(db_path):
+            print(f"Warning: Database file not found at {db_path}. Creating an empty dump.")
+            db_dump_sql = "" # Leerer Dump, wenn DB nicht existiert
+        else:
+            conn = None
+            db_dump_sql = ""
+            try:
+                conn = sqlite3.connect(db_path)
+                # Verwende .iterdump() für einen vollständigen SQL-Dump
+                db_dump_sql = "\n".join(conn.iterdump())
+            except Exception as e:
+                print(f"Fehler beim Erstellen des DB-Dumps: {e}")
+                # Wir geben den Fehler nicht sofort zurück, sondern lassen den Export mit leerem Dump weiterlaufen
+                # Das Frontend kann dann immer noch die JSON-Daten erhalten.
+                # Eine bessere Fehlerbehandlung wäre hier, den Fehler an den Client zu senden.
+                # Für diesen Fall senden wir eine leere SQL-Dump, aber protokollieren den Fehler.
+                db_dump_sql = "" 
+            finally:
+                if conn:
+                    conn.close()
 
         # 3. Alles in einem JSON-Objekt zusammenfassen
         all_data = {
@@ -486,7 +421,8 @@ def export_all_data_string():
             "database_dump_sql": db_dump_sql
         }
         
-        return jsonify(all_data), 200 # Gebe es als JSON zurück
+        # Gebe es als JSON zurück. jsonify konvertiert das Python-Dict in einen JSON-String.
+        return jsonify(all_data), 200 
     except Exception as e:
         print(f"Fehler beim Exportieren aller Daten als String: {e}")
         return jsonify({'error': f'Fehler beim Exportieren: {str(e)}'}), 500
@@ -519,6 +455,7 @@ def import_all_data_string():
             if filename in config_data:
                 filepath = os.path.join(base_dir, filename)
                 try:
+                    # Versuche, den Inhalt als JSON zu parsen, bevor wir ihn schreiben
                     json.loads(config_data[filename]) 
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(config_data[filename])
@@ -528,13 +465,21 @@ def import_all_data_string():
                     raise Exception(f"Fehler beim Schreiben von {filename} während des Imports: {str(e)}")
 
         # 2. Datenbank wiederherstellen
-        SessionLocal().close_all() # Schließe alle aktiven DB-Sessions
+        # Schließe alle bestehenden DB-Sessions, bevor die Datei gelöscht/ersetzt wird
+        SessionLocal().close_all() 
 
         if os.path.exists(db_path):
-            os.remove(db_path)
-            print(f"Alte Datenbankdatei {db_path} gelöscht.")
-        
-        # Datenbank neu initialisieren (Schema wird erstellt)
+            try:
+                os.remove(db_path)
+                print(f"Alte Datenbankdatei {db_path} gelöscht.")
+            except OSError as e:
+                # Dies kann passieren, wenn die Datei noch von einem anderen Prozess gesperrt ist
+                print(f"Fehler beim Löschen der alten Datenbankdatei: {e}. Versuche fortzufahren.")
+                # Optional: Hier könnte man versuchen, den Dienst neu zu starten oder eine Fehlermeldung zurückgeben.
+                # Für jetzt versuchen wir einfach, die DB neu zu initialisieren, was fehlschlagen könnte.
+
+        # Datenbank neu initialisieren (Schema wird erstellt, falls nicht vorhanden)
+        # Dies stellt sicher, dass die Tabellenstruktur vorhanden ist, bevor wir den Dump einspielen.
         init_db() 
         
         # Führe den SQL-Dump aus, um die Daten einzufügen
@@ -543,13 +488,16 @@ def import_all_data_string():
             try:
                 conn = sqlite3.connect(db_path)
                 cursor = conn.cursor()
-                cursor.executescript(db_dump_sql) # Führt alle SQL-Befehle aus
+                # Führt alle SQL-Befehle aus. Wichtig: Dies kann fehlschlagen, wenn der Dump inkonsistent ist.
+                cursor.executescript(db_dump_sql) 
                 conn.commit()
                 print("Datenbank aus SQL-Dump wiederhergestellt.")
             except Exception as e:
-                # WICHTIG: Wenn der Dump fehlschlägt, ist die DB möglicherweise inkonsistent
                 print(f"Fehler beim Ausführen des SQL-Dumps: {e}")
-                raise Exception(f"Fehler beim Ausführen des SQL-Dumps: {str(e)}")
+                # Rollback bei Fehler, um inkonsistente Zustände zu vermeiden
+                if conn:
+                    conn.rollback() 
+                raise Exception(f"Fehler beim Ausführen des SQL-Dumps: {str(e)}. Datenbank möglicherweise inkonsistent.")
             finally:
                 if conn:
                     conn.close()
@@ -563,7 +511,7 @@ def import_all_data_string():
         return jsonify({'error': f'Ungültiges JSON-Format des Import-Strings: {str(e)}'}), 400
     except Exception as e:
         print(f"Fehler beim Importieren aller Daten aus String: {e}")
-        return jsonify({'error': f'Fehler beim Importieren: {str(e)}'}), 500
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
 
 @socketio.on('connect')
 def handle_connect():

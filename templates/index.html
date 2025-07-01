@@ -4,87 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokémon Soul Link Challenge</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.0/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
-            color: #2d3748;
+            background-color: #f8f9fa;
         }
         .container {
             max-width: 1200px;
+            margin-top: 20px;
+            margin-bottom: 20px;
         }
-        .order-button {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        .card {
+            border-radius: 0.75rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
-        .order-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .order-button.obtained {
-            background-color: #48bb78; /* Green for obtained */
+        .card-header {
+            background-color: #007bff;
             color: white;
-            border-color: #38a169;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            font-weight: bold;
         }
-        .order-button.obtained:hover {
-            background-color: #38a169;
+        .table-responsive {
+            margin-top: 1rem;
         }
-        .order-button:not(.obtained) {
-            background-color: #e2e8f0; /* Light gray for not obtained */
-            color: #4a5568;
-            border-color: #cbd5e0;
+        .table th, .table td {
+            vertical-align: middle;
+            text-align: center;
         }
-        .order-button:not(.obtained):hover {
-            background-color: #d1d8e0;
+        .table thead th {
+            background-color: #e9ecef;
         }
-        .order-button.next-cap-highlight {
-            border-color: #8b5cf6; /* Lila Rand */
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.4); /* Lila Glow */
-            background-color: #ede9fe; /* Sehr helles Lila */
-        }
-
-
-        /* Styles for custom dropdown with search */
-        .custom-select-container {
-            position: relative;
-            width: 100%;
-        }
-        .custom-select-input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1.5px solid #ccc;
+        .form-control, .btn {
             border-radius: 0.375rem;
-            background-color: #fff;
-            cursor: pointer;
-            text-align: left;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
         }
-        .custom-select-input::after {
-            content: '▼'; /* Dropdown arrow */
-            font-size: 0.75rem;
-            color: #4a5568;
-            margin-left: 0.5rem;
+        .alert {
+            margin-top: 1rem;
+        }
+        .custom-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .custom-select-trigger {
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: calc(1.5em + 0.75rem + 2px); /* Angleichen an Bootstrap input Höhe */
+        }
+        .custom-select-trigger::after {
+            content: '▼';
+            font-size: 0.7em;
+            margin-left: 0.5em;
+            transition: transform 0.2s;
+        }
+        .custom-select-trigger.active::after {
+            transform: rotate(180deg);
         }
         .custom-select-options {
             position: absolute;
-            width: 100%;
             background-color: #fff;
-            border: 1px solid #ccc;
+            border: 1px solid #ced4da;
             border-radius: 0.375rem;
-            max-height: 350px;
+            max-height: 200px;
             overflow-y: auto;
+            width: 100%;
             z-index: 1000;
-            margin-top: 0.25rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: none;
+            display: none; /* Standardmäßig versteckt */
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
         .custom-select-options.active {
-            display: block;
+            display: block; /* Zeigt die Optionen an, wenn aktiv */
+        }
+        .custom-select-option {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+        }
+        .custom-select-option:hover {
+            background-color: #e9ecef;
+        }
+        .custom-select-option.selected {
+            background-color: #007bff;
+            color: white;
         }
         .custom-select-search {
             width: calc(100% - 1.5rem);
@@ -93,201 +104,169 @@
             border: 1px solid #ccc;
             border-radius: 0.375rem;
             box-sizing: border-box;
+            display: none; /* <-- FIX: Standardmäßig ausblenden */
         }
-        .custom-select-option {
-            padding: 0.5rem 0.75rem;
+        .custom-select-options.active .custom-select-search {
+            display: block; /* <-- FIX: Nur anzeigen, wenn Optionen aktiv sind */
+        }
+
+        /* Global Order & Level Caps Styling */
+        .global-orders-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 1rem;
+            padding: 15px;
+            background-color: #f0f8ff; /* Light blue background */
+            border-radius: 0.5rem;
+            border: 1px solid #e0f0ff;
+        }
+        .global-order-button {
+            padding: 10px 15px;
+            border: 1px solid #007bff;
+            border-radius: 0.375rem;
+            background-color: #f8f9fa;
+            color: #007bff;
             cursor: pointer;
-            line-height: 1.5;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            transition: background-color 0.2s, color 0.2s;
+            min-width: 100px; /* Ensure buttons have a minimum width */
+            text-align: center;
         }
-        .custom-select-option:hover {
-            background-color: #f0f4f8;
+        .global-order-button.obtained {
+            background-color: #28a745; /* Green for obtained */
+            color: white;
+            border-color: #28a745;
         }
-        .custom-select-option.selected {
-            background-color: #e0e7ff;
+        .global-order-button:hover:not(.obtained) {
+            background-color: #e9ecef;
+        }
+        .level-cap-display {
+            width: 100%;
+            text-align: center;
+            margin-top: 1rem;
+            padding: 15px;
+            background-color: #d4edda; /* Light green background */
+            border-radius: 0.5rem;
+            color: #155724;
             font-weight: bold;
+            border: 1px solid #c3e6cb;
         }
-        /* CSS-KLASSEN FÜR ROUTEN-STATUS */
-        .route-status-orange {
-            background-color: #ffedd5;
-            color: #c2410c;
-        }
-        .route-status-red {
-            background-color: #fee2e2;
-            color: #b91c1c;
-        }
-        textarea.json-editor {
-            width: 100%;
-            min-height: 200px;
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 0.9em;
-            border: 1px solid #ccc;
-            border-radius: 0.375rem;
-            padding: 10px;
-        }
-        textarea.data-string-editor { /* NEU: Für den Import/Export String */
-            width: 100%;
-            min-height: 300px; /* Größer für den gesamten Datenstring */
-            font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 0.8em;
-            border: 1px solid #ccc;
-            border-radius: 0.375rem;
-            padding: 10px;
-            white-space: pre; /* Behält Leerzeichen und Zeilenumbrüche */
-            word-wrap: normal; /* Verhindert Zeilenumbrüche innerhalb von Wörtern */
-            overflow-x: auto; /* Erlaubt horizontalen Scrollbalken */
+        .error-message {
+            color: red;
+            font-weight: bold;
+            margin-top: 10px;
         }
     </style>
 </head>
-<body class="bg-gray-100 p-6">
-    <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
-        <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Pokémon Soul Link Challenge</h1>
+<body>
+    <div class="container">
+        <h1 class="text-center my-4">Pokémon Soul Link Challenge</h1>
 
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md flex justify-around items-center gap-4 flex-wrap">
-            <button id="openSummaryBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Kurzansicht öffnen</button>
-            <button id="resetDatabaseBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Datenbank vollständig zurücksetzen</button>
+        <div class="d-flex justify-content-center mb-4">
+            <a href="/summary" class="btn btn-info mx-2">Kurzansicht öffnen</a>
+            <button class="btn btn-danger mx-2" onclick="confirmFullDbReset()">Datenbank vollständig zurücksetzen</button>
         </div>
 
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Spielerverwaltung</h2>
-            <div class="flex flex-col md:flex-row gap-4">
-                <input type="text" id="playerNameInput" placeholder="Neuer Spielername" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="addPlayerBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Spieler hinzufügen</button>
-            </div>
-            <div id="messageBox" class="mt-4 p-3 rounded-md text-sm hidden"></div>
+        <div id="errorMessage" class="alert alert-danger d-none" role="alert">
+            Ein Fehler ist aufgetreten.
+        </div>
+        <div id="successMessage" class="alert alert-success d-none" role="alert">
+            Aktion erfolgreich!
         </div>
 
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Routenverwaltung</h2>
-            <div class="flex flex-col md:flex-row gap-4 items-center mb-4">
-                <div class="custom-select-container flex-grow" id="routeSelectContainer">
-                    <div id="routeSelectInput" class="custom-select-input" tabindex="0">Route auswählen...</div>
-                    <div id="routeSelectOptions" class="custom-select-options">
-                        <input type="text" class="custom-select-search" placeholder="Suche Route...">
-                        <div class="options-list"></div>
-                    </div>
+        <div class="card mb-4">
+            <div class="card-header">Spielerverwaltung</div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="newPlayerName" class="form-control" placeholder="Neuer Spielername">
+                    <button class="btn btn-primary" onclick="addPlayer()">Spieler hinzufügen</button>
                 </div>
-                <button id="addRouteBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Route hinzufügen</button>
-            </div>
-            <div class="flex flex-col md:flex-row gap-4 items-center">
-                <div class="custom-select-container flex-grow" id="removeRouteSelectContainer">
-                    <div id="removeRouteSelectInput" class="custom-select-input" tabindex="0">Route zum Entfernen auswählen...</div>
-                    <div id="removeRouteSelectOptions" class="custom-select-options">
-                        <input type="text" class="custom-select-search" placeholder="Suche Route...">
-                        <div class="options-list"></div>
-                    </div>
-                </div>
-                <button id="removeRouteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Ausgewählte Route entfernen</button>
             </div>
         </div>
 
-        <div class="overflow-x-auto mb-8 bg-white rounded-lg shadow-md p-6 pb-40">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Pokémon-Fänge Übersicht</h2>
-
-            <div class="text-center mb-6">
-                <button id="resetAllDataBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Alle Fänge & Routen-Status zurücksetzen</button>
-            </div>
-
-            <table class="min-w-full bg-white border border-gray-200 rounded-lg">
-                <thead class="bg-blue-100">
-                    <tr>
-                        <th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Route</th>
-                        <th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                        <th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody id="catchTableBody">
-                    </tbody>
-            </table>
-        </div>
-
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Globale Orden & Level Caps</h2>
-            <div id="ordersContainer" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9 gap-4 mb-6">
+        <div class="card mb-4">
+            <div class="card-header">Routenverwaltung</div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <select id="newRouteName" class="form-select" data-placeholder="Route auswählen...">
+                        <option></option>
+                    </select>
+                    <button class="btn btn-primary" onclick="addRoute()">Route hinzufügen</button>
                 </div>
-            <div id="levelCapDisplay" class="text-center text-xl font-bold text-green-700 p-4 bg-green-100 rounded-md shadow-inner hidden">
-                Aktuelles Level Cap: <span id="currentLevelCapMax" class="text-green-800"></span> (Angepasst: <span id="currentLevelCapAdjusted" class="text-green-800"></span>)
+                <div class="input-group">
+                    <select id="routeToRemove" class="form-select" data-placeholder="Route zum Entfernen auswählen...">
+                        <option></option>
+                    </select>
+                    <button class="btn btn-danger" onclick="confirmClearRouteData()">Ausgewählte Route entfernen</button>
+                </div>
             </div>
         </div>
 
-        <div class="mb-8 p-6 bg-yellow-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-yellow-700 mb-4">Konfigurationsverwaltung (JSON-Dateien)</h2>
-            <div class="text-sm text-yellow-800 mb-4 p-3 bg-yellow-100 border border-yellow-200 rounded">
-                Hier können die JSON-Konfigurationsdateien direkt bearbeitet werden. Änderungen an diesen Dateien werden nach dem Speichern und Neuladen der App-Konfiguration wirksam. Beachten Sie, dass Änderungen an den Level Caps erst nach einem "Datenbank vollständig zurücksetzen"-Vorgang in die Datenbank übernommen werden.
+        <div class="card mb-4">
+            <div class="card-header">Pokémon-Fänge Übersicht</div>
+            <div class="card-body">
+                <button class="btn btn-danger mb-3" onclick="confirmResetAllData()">Alle Fänge & Routen-Status zurücksetzen</button>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="catchTable">
+                        <thead>
+                            <tr>
+                                <th>ROUTE</th>
+                                <th>STATUS</th>
+                                <th>AKTIONEN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
             </div>
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">routes.json</h3>
-                    <textarea id="routesJsonContent" class="json-editor"></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button id="loadRoutesJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
-                        <button id="saveRoutesJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
+        <div class="card mb-4">
+            <div class="card-header">Globale Orden & Level Caps</div>
+            <div class="card-body">
+                <div class="global-orders-container" id="globalOrdersContainer">
                     </div>
-                </div>
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">pokemon_names.json</h3>
-                    <textarea id="pokemonNamesJsonContent" class="json-editor"></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button id="loadPokemonNamesJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
-                        <button id="savePokemonNamesJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
-                    </div>
-                </div>
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">level_caps.json</h3>
-                    <textarea id="levelCapsJsonContent" class="json-editor"></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button id="loadLevelCapsJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
-                        <button id="saveLevelCapsJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
-                    </div>
+                <div class="level-cap-display" id="levelCapDisplay">
+                    Aktuelles Level Cap: -- (Angepasst: --)
                 </div>
             </div>
-            <div class="mt-8 text-center">
-                <button id="reloadAppConfigsBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">App-Konfigurationen neu laden</button>
-            </div>
+        </div>
 
-            <div class="mt-8 pt-6 border-t-2 border-yellow-200">
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Daten-Backup & Wiederherstellung (ZIP-Datei)</h3>
-                <div class="text-sm text-yellow-800 mb-4 p-3 bg-yellow-100 border border-yellow-200 rounded">
-                    Erstellt eine ZIP-Datei mit der Datenbank und allen JSON-Konfigurationsdateien.
-                    Die Wiederherstellungsfunktion kann bestehende Daten überschreiben. Bitte nur vertrauenswürdige Backup-Dateien hochladen.
+        <div class="card mb-4">
+            <div class="card-header">Daten-Export & Import (String)</div>
+            <div class="card-body">
+                <div class="alert alert-info" role="alert">
+                    Exportiert alle Daten (Datenbank und Konfigurationsdateien) als einen einzigen Text-String. Dieser String kann zur Sicherung kopiert und später zum Wiederherstellen der Daten eingefügt werden.
                 </div>
-                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
-                    <button id="createBackupBtn" class="bg-green-700 hover:bg-green-800 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Backup herunterladen</button>
-                    <div class="flex items-center gap-2">
-                        <input type="file" id="restoreFileInput" accept=".zip" class="hidden">
-                        <label for="restoreFileInput" class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-md shadow-lg cursor-pointer transition duration-300 ease-in-out">Backup-Datei auswählen</label>
-                        <span id="restoreFileName" class="text-gray-600">Keine Datei ausgewählt</span>
-                        <button id="restoreBtn" class="bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Backup hochladen & wiederherstellen</button>
-                    </div>
+                <div class="mb-3">
+                    <button class="btn btn-success" onclick="exportAllDataAsString()">Alle Daten exportieren</button>
                 </div>
-            </div>
-
-            <div class="mt-8 pt-6 border-t-2 border-yellow-200">
-                <h3 class="text-xl font-semibold text-gray-700 mb-2">Daten-Export & Import (als Text)</h3>
-                <div class="text-sm text-yellow-800 mb-4 p-3 bg-yellow-100 border border-yellow-200 rounded">
-                    Hier können alle Daten (JSON-Konfigurationen & Datenbank) als einziger Text-String exportiert oder von einem String importiert werden.
-                    Der Importvorgang erfordert ein Passwort und wird alle bestehenden Daten überschreiben.
+                <div class="mb-3">
+                    <label for="exportDataString" class="form-label">Exportierter Daten-String:</label>
+                    <textarea id="exportDataString" class="form-control" rows="10" readonly placeholder="Exportierter Daten-String wird hier angezeigt..."></textarea>
+                    <button class="btn btn-secondary mt-2" onclick="copyExportString()">String kopieren</button>
                 </div>
-                <textarea id="allDataStringEditor" class="data-string-editor mb-4" placeholder="Exportierter Daten-String hier anzeigen oder für Import hier einfügen..."></textarea>
-                <div class="flex flex-col md:flex-row items-center justify-center gap-4">
-                    <button id="exportDataStringBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Alle Daten exportieren</button>
-                    <div class="flex items-center gap-2">
-                        <input type="password" id="importPasswordInput" placeholder="Passwort für Import" class="p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <button id="importDataStringBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Daten importieren</button>
-                    </div>
+                <hr>
+                <div class="mb-3">
+                    <label for="importDataString" class="form-label">Daten-String zum Importieren einfügen:</label>
+                    <textarea id="importDataString" class="form-control" rows="10" placeholder="Fügen Sie hier den exportierten Daten-String ein..."></textarea>
+                </div>
+                <div class="input-group mb-3">
+                    <input type="password" id="importPassword" class="form-control" placeholder="Passwort für Import (ImportJetzt)">
+                    <button class="btn btn-warning" onclick="confirmImportDataAsString()">Daten importieren</button>
+                </div>
+                <div class="alert alert-warning mt-3" role="alert">
+                    **ACHTUNG:** Das Importieren von Daten überschreibt alle aktuellen Daten in der Anwendung! Stellen Sie sicher, dass Sie einen gültigen und vertrauenswürdigen Daten-String verwenden. Das Standardpasswort ist `ImportJetzt`.
                 </div>
             </div>
-
+        </div>
 
     </div>
 
     <script>
         const socket = io();
-        const messageBox = document.getElementById('messageBox');
-
         let players = [];
         let routes = [];
         let catches = [];
@@ -296,266 +275,29 @@
         let allPokemonNames = [];
         let allRouteNames = [];
 
-        let removeRouteDropdown; // Für das "Route entfernen"-Dropdown
-        let routeDropdown; // Für das "Route hinzufügen"-Dropdown
+        // --- Hilfsfunktionen für Nachrichten ---
+        function showMessage(type, message) {
+            const errorDiv = document.getElementById('errorMessage');
+            const successDiv = document.getElementById('successMessage');
 
+            errorDiv.classList.add('d-none');
+            successDiv.classList.add('d-none');
 
-        // --- Custom Dropdown Logic ---
-        function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
-            const container = containerElement;
-            const input = inputElement;
-            const optionsDiv = optionsElement;
-            const optionsList = optionsListElement;
-            
-            const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
-
-            if (!container || !input || !optionsDiv || !optionsList) {
-                console.error("Fehler: Eines der Dropdown-Elemente konnte nicht gefunden werden.");
-                return null;
-            }
-
-            let selectedValue = null;
-            let currentItems = initialItemsArray;
-
-            function renderOptions(filter = '') {
-                optionsList.innerHTML = '';
-                const filteredItems = currentItems.filter(item =>
-                    item.toLowerCase().includes(filter.toLowerCase())
-                ).sort();
-
-                if (filteredItems.length === 0) {
-                    const noResult = document.createElement('div');
-                    noResult.className = 'custom-select-option text-gray-500 italic';
-                    noResult.textContent = 'Keine Ergebnisse gefunden.';
-                    optionsList.appendChild(noResult);
-                    return;
-                }
-
-                filteredItems.forEach(item => {
-                    const option = document.createElement('div');
-                    option.className = 'custom-select-option';
-                    if (item === selectedValue) {
-                        option.classList.add('selected');
-                    }
-                    option.textContent = item;
-                    option.dataset.value = item;
-                    option.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        input.textContent = item;
-                        selectedValue = item;
-                        optionsDiv.classList.remove('active');
-                        if (onSelectCallback) {
-                            onSelectCallback(item);
-                        }
-                    });
-                    optionsList.appendChild(option);
-                });
-            }
-
-            input.addEventListener('click', (e) => {
-                e.stopPropagation();
-                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
-                    if (openDiv !== optionsDiv && !openDiv.contains(e.target)) {
-                         openDiv.classList.remove('active');
-                    }
-                });
-                optionsDiv.classList.toggle('active');
-                if (searchInput) searchInput.value = '';
-                renderOptions(searchInput ? searchInput.value : '');
-                if (searchInput) searchInput.focus();
-            });
-
-            if (searchInput) {
-                searchInput.addEventListener('input', (e) => {
-                    renderOptions(e.target.value);
-                });
-            }
-
-            document.addEventListener('click', (e) => {
-                if (!container.contains(e.target)) {
-                    optionsDiv.classList.remove('active');
-                }
-                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
-                    if (!openDiv.closest('.custom-select-container').contains(e.target)) {
-                        openDiv.classList.remove('active');
-                    }
-                });
-            });
-
-            input.textContent = searchPlaceholder;
-            renderOptions();
-            return {
-                getSelectedValue: () => selectedValue,
-                setSelectedValue: (value) => {
-                    selectedValue = value;
-                    input.textContent = value || searchPlaceholder;
-                    renderOptions();
-                },
-                reset: () => {
-                    selectedValue = null;
-                    input.textContent = searchPlaceholder;
-                    if (searchInput) searchInput.value = '';
-                    renderOptions();
-                },
-                updateItems: (newItems) => {
-                    currentItems = newItems;
-                    renderOptions(searchInput ? searchInput.value : '');
-                }
-            };
-        }
-
-        // Funktion zum Erstellen des Pokémon-Dropdowns
-        function createPokemonDropdown(parentElement, initialValue, playerId, routeId) {
-            const container = document.createElement('div');
-            container.id = `pokemon-dropdown-container-${playerId}-${routeId}`;
-            container.className = 'custom-select-container';
-
-            const input = document.createElement('div');
-            input.id = `pokemon-input-${playerId}-${routeId}`;
-            input.className = 'custom-select-input text-sm';
-            input.textContent = initialValue || 'Pokémon eintragen';
-            input.tabIndex = 0;
-            container.appendChild(input);
-
-            const optionsDiv = document.createElement('div');
-            optionsDiv.id = `pokemon-options-${playerId}-${routeId}`;
-            optionsDiv.className = 'custom-select-options';
-            container.appendChild(optionsDiv);
-
-            const searchInput = document.createElement('input');
-            searchInput.type = 'text';
-            searchInput.className = 'custom-select-search';
-            searchInput.placeholder = 'Suche Pokémon...';
-            optionsDiv.appendChild(searchInput);
-
-            const optionsList = document.createElement('div');
-            optionsList.id = `pokemon-options-list-${playerId}-${routeId}`;
-            optionsList.className = 'options-list';
-            optionsDiv.appendChild(optionsList);
-
-            parentElement.appendChild(container);
-
-
-            const dropdown = setupCustomDropdown(
-                container,
-                input,
-                optionsDiv,
-                optionsList,
-                'Pokémon eintragen',
-                allPokemonNames,
-                async (selectedPokemonName) => {
-                    await updateCatchOnServer(playerId, routeId, selectedPokemonName);
-                },
-                true
-            );
-
-            if (dropdown) {
-                dropdown.setSelectedValue(initialValue);
-            } else {
-                console.error(`Fehler: Pokémon-Dropdown für Spieler ${playerId}, Route ${routeId} konnte nicht initialisiert werden.`);
-            }
-            return dropdown;
-        }
-
-        async function updateCatchOnServer(playerId, routeId, pokemonName) {
-            try {
-                const response = await fetch('/api/update_catch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName })
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-            } catch (error) {
-                console.error('Fehler beim Aktualisieren des Fangs:', error);
-            }
-        }
-
-        // Funktion zum Erstellen des Status-Dropdowns für eine Route
-        function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
-            const statusOptions = [
-                "",
-                "Death Link",
-                "No Catch",
-                ...players.map(player => `Death (${player.name})`)
-            ];
-
-            const containerDiv = document.createElement('div');
-            containerDiv.id = `status-dropdown-index-container-${routeId}`;
-            containerDiv.className = 'custom-select-container';
-
-            const inputDiv = document.createElement('div');
-            inputDiv.id = `status-dropdown-index-input-${routeId}`;
-            inputDiv.className = 'custom-select-input text-sm';
-            inputDiv.tabIndex = 0;
-            containerDiv.appendChild(inputDiv);
-
-            const optionsDiv = document.createElement('div');
-            optionsDiv.id = `status-dropdown-index-options-${routeId}`;
-            optionsDiv.className = 'custom-select-options';
-
-            const optionsListDiv = document.createElement('div');
-            optionsListDiv.id = `status-options-list-${routeId}`;
-            optionsListDiv.className = 'options-list';
-            optionsDiv.appendChild(optionsListDiv);
-            containerDiv.appendChild(optionsDiv);
-
-            parentElement.appendChild(containerDiv);
-
-
-            const dropdown = setupCustomDropdown(
-                containerDiv,
-                inputDiv,
-                optionsDiv,
-                optionsListDiv,
-                'Status',
-                statusOptions,
-                async (selectedStatus) => {
-                    try {
-                        const response = await fetch('/api/update_route_status', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ route_id: routeId, status_text: selectedStatus })
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            console.error('Fehler beim Aktualisieren des Routenstatus:', errorData.error);
-                        }
-                    } catch (error) {
-                        console.error('Netzwerkfehler beim Aktualisieren des Routenstatus:', error);
-                    }
-                },
-                false
-            );
-
-            if (dropdown) {
-                dropdown.setSelectedValue(initialStatus);
-            } else {
-                console.error(`Fehler: Dropdown für Route ${routeId} konnte nicht initialisiert werden.`);
-            }
-            return dropdown;
-        }
-
-
-        // --- Hilfsfunktionen für UI-Nachrichten ---
-        function showMessage(message, type = 'info') {
-            messageBox.textContent = message;
-            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
             if (type === 'error') {
-                messageBox.classList.add('bg-red-100', 'text-red-700');
+                errorDiv.textContent = message;
+                errorDiv.classList.remove('d-none');
             } else if (type === 'success') {
-                messageBox.classList.add('bg-green-100', 'text-green-700');
-            } else {
-                messageBox.classList.add('bg-blue-100', 'text-blue-700');
+                successDiv.textContent = message;
+                successDiv.classList.remove('d-none');
             }
+            // Blende die Nachricht nach 5 Sekunden aus
             setTimeout(() => {
-                messageBox.classList.add('hidden');
+                errorDiv.classList.add('d-none');
+                successDiv.classList.add('d-none');
             }, 5000);
         }
 
-        // --- Daten vom Server abrufen und rendern ---
+        // --- Daten laden und Tabelle rendern ---
         async function fetchDataAndRender() {
             try {
                 const response = await fetch('/api/data');
@@ -568,237 +310,342 @@
                 catches = data.catches;
                 globalOrders = data.global_orders;
                 levelCaps = data.level_caps;
-                allPokemonNames = data.all_pokemon_names || [];
-                allRouteNames = data.all_route_names || [];
-
-                // Route hinzufügen Dropdown
-                const routeSelectContainer = document.getElementById('routeSelectContainer');
-                const routeSelectInput = document.getElementById('routeSelectInput');
-                const routeSelectOptions = document.getElementById('routeSelectOptions');
-                const routeSelectOptionsList = routeSelectOptions.querySelector('.options-list');
-
-                if (!routeDropdown) {
-                    routeDropdown = setupCustomDropdown(
-                        routeSelectContainer,
-                        routeSelectInput,
-                        routeSelectOptions,
-                        routeSelectOptionsList,
-                        'Route auswählen...',
-                        allRouteNames,
-                        null,
-                        true
-                    );
-                } else {
-                    routeDropdown.updateItems(allRouteNames);
-                    routeDropdown.reset();
-                }
-
-                // Route entfernen Dropdown
-                const removeRouteSelectContainer = document.getElementById('removeRouteSelectContainer');
-                const removeRouteSelectInput = document.getElementById('removeRouteSelectInput');
-                const removeRouteSelectOptions = document.getElementById('removeRouteSelectOptions');
-                const removeRouteSelectOptionsList = removeRouteSelectOptions.querySelector('.options-list');
-
-                const currentRouteNames = routes.map(r => r.name); 
-
-                if (!removeRouteDropdown) {
-                    removeRouteDropdown = setupCustomDropdown(
-                        removeRouteSelectContainer,
-                        removeRouteSelectInput,
-                        removeRouteSelectOptions,
-                        removeRouteSelectOptionsList,
-                        'Route zum Entfernen auswählen...',
-                        currentRouteNames,
-                        null,
-                        true
-                    );
-                } else {
-                    removeRouteDropdown.updateItems(currentRouteNames);
-                    removeRouteDropdown.reset();
-                }
+                allPokemonNames = data.all_pokemon_names;
+                allRouteNames = data.all_route_names;
 
                 renderTable();
                 renderGlobalOrders();
+                renderLevelCap();
+                populateRouteSelects();
+                showMessage('success', 'Daten erfolgreich geladen.');
+
             } catch (error) {
-                console.error('Fehler beim Abrufen der Daten:', error);
-                showMessage('Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.', 'error');
+                console.error('Fehler beim Laden der Daten:', error);
+                showMessage('error', 'Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.');
             }
         }
 
         function renderTable() {
-            const catchTableBody = document.getElementById('catchTableBody');
-            catchTableBody.innerHTML = '';
+            const table = document.getElementById('catchTable');
+            const thead = table.querySelector('thead tr');
+            const tbody = table.querySelector('tbody');
 
-            const tableHeadRow = document.querySelector('thead tr');
-            tableHeadRow.innerHTML = '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Route</th>';
-
+            // Header rendern
+            thead.innerHTML = '<th>ROUTE</th>';
             players.forEach(player => {
-                const th = document.createElement('th');
-                th.className = 'py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider';
-                th.textContent = player.name;
-                tableHeadRow.appendChild(th);
+                thead.innerHTML += `<th>${player.name.toUpperCase()}</th>`;
             });
-            tableHeadRow.innerHTML += '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Status</th>';
-            tableHeadRow.innerHTML += '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Aktionen</th>';
+            thead.innerHTML += '<th>STATUS</th><th>AKTIONEN</th>';
 
-
+            // Body rendern
+            tbody.innerHTML = '';
             routes.forEach(route => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
-
-                const routeNameCell = document.createElement('td');
-                routeNameCell.className = 'py-3 px-4 border-b border-gray-200 font-medium text-gray-800';
-                routeNameCell.textContent = route.name;
-                routeNameCell.classList.remove('route-status-orange', 'route-status-red');
-                if (route.status === "Death Link" || route.status === "No Catch") {
-                    routeNameCell.classList.add('route-status-orange');
-                } else if (route.status.startsWith("Death (")) {
-                    routeNameCell.classList.add('route-status-red');
-                }
-                row.appendChild(routeNameCell);
-
+                const row = tbody.insertRow();
+                row.insertCell().textContent = route.name;
 
                 players.forEach(player => {
-                    const catchCell = document.createElement('td');
-                    catchCell.className = 'py-3 px-4 border-b border-gray-200';
-
-                    const existingCatch = catches.find(c => c.player_id === player.id && c.route_id === route.id);
-                    const pokemonName = existingCatch ? existingCatch.pokemon_name : null;
-
-                    createPokemonDropdown(catchCell, pokemonName, player.id, route.id);
-                    row.appendChild(catchCell);
+                    const cell = row.insertCell();
+                    const catchEntry = catches.find(c => c.player_id === player.id && c.route_id === route.id);
+                    const pokemonName = catchEntry ? (catchEntry.pokemon_name || 'Pokémon eintragen') : 'Pokémon eintragen';
+                    
+                    // Erstelle den Custom Select
+                    const customSelectHtml = createCustomSelect(player.id, route.id, pokemonName);
+                    cell.innerHTML = customSelectHtml;
                 });
 
-                const statusCell = document.createElement('td');
-                statusCell.className = 'py-3 px-4 border-b border-gray-200';
-                createStatusDropdownIndex(statusCell, route.status, route.id);
-                row.appendChild(statusCell);
+                // Status-Zelle
+                const statusCell = row.insertCell();
+                statusCell.innerHTML = `
+                    <div class="custom-select-wrapper status-select-wrapper">
+                        <div class="custom-select-trigger status-trigger" data-route-id="${route.id}">
+                            <span>${route.status || 'Status'}</span>
+                            <input type="hidden" class="status-value" value="${route.status || ''}">
+                        </div>
+                        <div class="custom-select-options status-options">
+                            <div class="custom-select-option" data-value="">Status</div>
+                            <div class="custom-select-option" data-value="Abgeschlossen">Abgeschlossen</div>
+                            <div class="custom-select-option" data-value="Laufend">Laufend</div>
+                            <div class="custom-select-option" data-value="Ausstehend">Ausstehend</div>
+                            <div class="custom-select-option" data-value="Fehlgeschlagen">Fehlgeschlagen</div>
+                        </div>
+                    </div>
+                `;
 
-                const actionsCell = document.createElement('td');
-                actionsCell.className = 'py-3 px-4 border-b border-gray-200';
-                const clearRouteBtn = document.createElement('button');
-                clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-300 ease-in-out';
-                clearRouteBtn.textContent = 'Clear Route Daten';
-                clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" zurücksetzen`;
-                clearRouteBtn.addEventListener('click', async () => {
-                    if (confirm(`Sicher, dass ALLE Pokémon und der Status für Route "${route.name}" zurückgesetzt werden sollen?`)) {
+                // Aktionen-Zelle
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `<button class="btn btn-danger btn-sm" onclick="confirmClearRouteData(${route.id})">Clear Route Data</button>`;
+            });
+
+            // Initialisiere Custom Selects nach dem Rendern
+            initializeCustomSelects();
+            initializeStatusSelects();
+        }
+
+        function createCustomSelect(playerId, routeId, selectedPokemon) {
+            const uniqueId = `select-${playerId}-${routeId}`;
+            let optionsHtml = allPokemonNames.map(name => 
+                `<div class="custom-select-option ${name === selectedPokemon ? 'selected' : ''}" data-value="${name}">${name}</div>`
+            ).join('');
+
+            // Option für "No Catch" hinzufügen
+            optionsHtml = `<div class="custom-select-option ${selectedPokemon === 'No Catch' ? 'selected' : ''}" data-value="No Catch">No Catch</div>` + optionsHtml;
+
+            return `
+                <div class="custom-select-wrapper">
+                    <div class="custom-select-trigger" data-player-id="${playerId}" data-route-id="${routeId}">
+                        <span>${selectedPokemon}</span>
+                        <input type="hidden" class="selected-value" value="${selectedPokemon}">
+                    </div>
+                    <div class="custom-select-options">
+                        <input type="text" class="custom-select-search" placeholder="Suche Pokémon...">
+                        ${optionsHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function initializeCustomSelects() {
+            document.querySelectorAll('.custom-select-trigger').forEach(trigger => {
+                // Verhindere doppelte Event-Listener
+                if (trigger.dataset.initialized) return; 
+                trigger.dataset.initialized = true;
+
+                trigger.addEventListener('click', function() {
+                    const wrapper = this.closest('.custom-select-wrapper');
+                    const optionsDiv = wrapper.querySelector('.custom-select-options');
+                    const searchInput = wrapper.querySelector('.custom-select-search');
+
+                    // Schließe andere offene Selects
+                    document.querySelectorAll('.custom-select-options.active').forEach(openOptions => {
+                        if (openOptions !== optionsDiv) {
+                            openOptions.classList.remove('active');
+                            openOptions.previousElementSibling.classList.remove('active');
+                        }
+                    });
+
+                    optionsDiv.classList.toggle('active');
+                    this.classList.toggle('active');
+
+                    if (optionsDiv.classList.contains('active')) {
+                        searchInput.value = ''; // Suchfeld leeren beim Öffnen
+                        filterOptions(searchInput); // Alle Optionen anzeigen
+                        searchInput.focus();
+                    }
+                });
+            });
+
+            document.querySelectorAll('.custom-select-options').forEach(optionsDiv => {
+                const searchInput = optionsDiv.querySelector('.custom-select-search');
+                if (searchInput && !searchInput.dataset.initialized) {
+                    searchInput.dataset.initialized = true;
+                    searchInput.addEventListener('input', function() {
+                        filterOptions(this);
+                    });
+                }
+
+                optionsDiv.querySelectorAll('.custom-select-option').forEach(option => {
+                    if (option.dataset.initialized) return;
+                    option.dataset.initialized = true;
+
+                    option.addEventListener('click', async function() {
+                        const wrapper = this.closest('.custom-select-wrapper');
+                        const trigger = wrapper.querySelector('.custom-select-trigger');
+                        const displaySpan = trigger.querySelector('span');
+                        const hiddenInput = trigger.querySelector('.selected-value');
+                        const optionsDiv = wrapper.querySelector('.custom-select-options');
+
+                        const playerId = trigger.dataset.playerId;
+                        const routeId = trigger.dataset.routeId;
+                        const pokemonName = this.dataset.value;
+
+                        displaySpan.textContent = pokemonName;
+                        hiddenInput.value = pokemonName;
+
+                        // Entferne 'selected' von allen Optionen und füge es der geklickten hinzu
+                        optionsDiv.querySelectorAll('.custom-select-option').forEach(opt => opt.classList.remove('selected'));
+                        this.classList.add('selected');
+
+                        optionsDiv.classList.remove('active');
+                        trigger.classList.remove('active');
+
+                        // API-Aufruf
                         try {
-                            const response = await fetch('/api/clear_route_data', {
+                            const response = await fetch('/api/update_catch', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ route_id: route.id })
+                                body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName })
                             });
                             if (!response.ok) {
-                                const errorData = await response.json();
-                                showMessage(`Fehler beim Zurücksetzen der Routendaten: ${errorData.error}`, 'error');
-                            } else {
-                                showMessage(`Daten für Route "${route.name}" zurückgesetzt!`, 'success');
+                                throw new Error('Fehler beim Aktualisieren des Fangs');
                             }
+                            // SocketIO wird die UI aktualisieren
                         } catch (error) {
-                            console.error('Netzwerkfehler beim Zurücksetzen der Routendaten.', error);
-                            showMessage('Netzwerkfehler beim Zurücksetzen der Routendaten.', 'error');
+                            console.error('Fehler beim Aktualisieren des Fangs:', error);
+                            showMessage('error', 'Fehler beim Aktualisieren des Fangs.');
                         }
+                    });
+                });
+            });
+
+            // Klick außerhalb des Selects schließen
+            document.addEventListener('click', function(event) {
+                document.querySelectorAll('.custom-select-wrapper').forEach(wrapper => {
+                    if (!wrapper.contains(event.target)) {
+                        const optionsDiv = wrapper.querySelector('.custom-select-options');
+                        const trigger = wrapper.querySelector('.custom-select-trigger');
+                        optionsDiv.classList.remove('active');
+                        trigger.classList.remove('active');
                     }
                 });
-                actionsCell.appendChild(clearRouteBtn);
-                row.appendChild(actionsCell);
-
-                catchTableBody.appendChild(row);
             });
         }
 
-function renderGlobalOrders() {
-            const ordersContainer = document.getElementById('ordersContainer');
-            ordersContainer.innerHTML = '';
-            const levelCapDisplay = document.getElementById('levelCapDisplay');
-            const currentLevelCapMax = document.getElementById('currentLevelCapMax');
-            const currentLevelCapAdjusted = document.getElementById('currentLevelCapAdjusted');
+        function filterOptions(searchInput) {
+            const filter = searchInput.value.toLowerCase();
+            const optionsDiv = searchInput.closest('.custom-select-options');
+            const options = optionsDiv.querySelectorAll('.custom-select-option');
 
-            levelCaps.sort((a, b) => a.order_number - b.order_number);
-
-            let lastObtainedOrderNumber = 0;
-            globalOrders.forEach(go => {
-                if (go.is_obtained && go.order_number > lastObtainedOrderNumber) {
-                    lastObtainedOrderNumber = go.order_number;
+            options.forEach(option => {
+                const text = option.textContent.toLowerCase();
+                if (text.includes(filter)) {
+                    option.style.display = '';
+                } else {
+                    option.style.display = 'none';
                 }
             });
+        }
 
-            let nextLevelCap = null;
-            nextLevelCap = levelCaps.find(lc => {
-                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
-                return !(globalOrder && globalOrder.is_obtained);
+        function initializeStatusSelects() {
+            document.querySelectorAll('.status-select-wrapper .custom-select-trigger').forEach(trigger => {
+                if (trigger.dataset.initialized) return;
+                trigger.dataset.initialized = true;
+
+                trigger.addEventListener('click', function() {
+                    const wrapper = this.closest('.status-select-wrapper');
+                    const optionsDiv = wrapper.querySelector('.status-options');
+
+                    document.querySelectorAll('.custom-select-options.active').forEach(openOptions => {
+                        if (openOptions !== optionsDiv) {
+                            openOptions.classList.remove('active');
+                            openOptions.previousElementSibling.classList.remove('active');
+                        }
+                    });
+
+                    optionsDiv.classList.toggle('active');
+                    this.classList.toggle('active');
+                });
             });
 
-            if (!nextLevelCap && levelCaps.length > 0) {
-                nextLevelCap = levelCaps[levelCaps.length - 1];
-            }
+            document.querySelectorAll('.status-select-wrapper .custom-select-option').forEach(option => {
+                if (option.dataset.initialized) return;
+                option.dataset.initialized = true;
 
-            if (nextLevelCap) {
-                currentLevelCapMax.textContent = nextLevelCap.max_level;
-                currentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
-                levelCapDisplay.classList.remove('hidden');
-            } else if (levelCaps.length > 0) {
-                currentLevelCapMax.textContent = levelCaps[levelCaps.length - 1].max_level;
-                currentLevelCapAdjusted.textContent = levelCaps[levelCaps.length - 1].adjusted_level;
-                levelCapDisplay.classList.remove('hidden');
-            } else {
-                levelCapDisplay.classList.add('hidden');
-            }
+                option.addEventListener('click', async function() {
+                    const wrapper = this.closest('.status-select-wrapper');
+                    const trigger = wrapper.querySelector('.status-trigger');
+                    const displaySpan = trigger.querySelector('span');
+                    const hiddenInput = trigger.querySelector('.status-value');
+                    const optionsDiv = wrapper.querySelector('.status-options');
 
-            levelCaps.forEach(lc => {
-                const button = document.createElement('button');
-                button.className = 'order-button p-4 rounded-lg border-2 font-bold text-base shadow-md flex items-center justify-center text-center transition duration-200 ease-in-out';
-                button.textContent = lc.name;
-                button.dataset.orderNumber = lc.order_number;
+                    const routeId = trigger.dataset.routeId;
+                    const statusText = this.dataset.value;
 
-                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
+                    displaySpan.textContent = statusText || 'Status'; // Zeige "Status" wenn leer
+                    hiddenInput.value = statusText;
 
-                if (globalOrder && globalOrder.is_obtained) {
-                    button.classList.add('obtained');
-                } else {
-                    button.classList.remove('obtained');
-                }
-
-                if (nextLevelCap && lc.order_number === nextLevelCap.order_number && !(globalOrder && globalOrder.is_obtained)) {
-                    button.classList.add('next-cap-highlight');
-                } else {
-                    button.classList.remove('next-cap-highlight');
-                }
-
-                button.addEventListener('click', async () => {
-                    const clickedOrderNumber = parseInt(button.dataset.orderNumber);
-
-                    const clickedLevelCap = levelCaps.find(item => item.order_number === clickedOrderNumber);
-                    if (clickedLevelCap) {
-                        currentLevelCapMax.textContent = clickedLevelCap.max_level;
-                        currentLevelCapAdjusted.textContent = clickedLevelCap.adjusted_level;
-                        levelCapDisplay.classList.remove('hidden');
-                    }
+                    optionsDiv.classList.remove('active');
+                    trigger.classList.remove('active');
 
                     try {
-                        const response = await fetch('/api/toggle_global_order', {
+                        const response = await fetch('/api/update_route_status', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ order_number: clickedOrderNumber })
+                            body: JSON.stringify({ route_id: routeId, status_text: statusText })
                         });
                         if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                            throw new Error('Fehler beim Aktualisieren des Routenstatus');
                         }
+                        // SocketIO wird die UI aktualisieren
                     } catch (error) {
-                        console.error('Fehler beim Umschalten des globalen Orden-Status:', error);
-                        showMessage(`Fehler: ${error.message}`, 'error');
+                        console.error('Fehler beim Aktualisieren des Routenstatus:', error);
+                        showMessage('error', 'Fehler beim Aktualisieren des Routenstatus.');
                     }
                 });
-                ordersContainer.appendChild(button);
             });
         }
 
-        // --- Event Listener für Buttons ---
-        document.getElementById('addPlayerBtn').addEventListener('click', async () => {
-            const playerName = document.getElementById('playerNameInput').value.trim();
+        function renderGlobalOrders() {
+            const container = document.getElementById('globalOrdersContainer');
+            container.innerHTML = ''; // Vorherige Buttons entfernen
+
+            // Sortiere Orden nach order_number
+            globalOrders.sort((a, b) => a.order_number - b.order_number);
+
+            globalOrders.forEach(order => {
+                const button = document.createElement('button');
+                button.classList.add('global-order-button');
+                if (order.is_obtained) {
+                    button.classList.add('obtained');
+                }
+                button.textContent = `${order.order_number}. Arena`; // Oder anderer passender Text
+                button.dataset.orderNumber = order.order_number;
+                button.onclick = () => toggleGlobalOrder(order.order_number);
+                container.appendChild(button);
+            });
+        }
+
+        function renderLevelCap() {
+            const display = document.getElementById('levelCapDisplay');
+            const currentLevelCap = levelCaps.find(lc => lc.is_current); // Annahme: Es gibt ein "aktuelles" Level Cap
+            
+            if (currentLevelCap) {
+                display.textContent = `Nächstes Level Cap: ${currentLevelCap.max_level} (Angepasst: ${currentLevelCap.adjusted_level})`;
+            } else {
+                display.textContent = 'Level Cap Daten nicht verfügbar.';
+            }
+        }
+
+
+        function populateRouteSelects() {
+            const newRouteSelect = $('#newRouteName');
+            const routeToRemoveSelect = $('#routeToRemove');
+
+            newRouteSelect.empty().append('<option></option>'); // Placeholder
+            routeToRemoveSelect.empty().append('<option></option>'); // Placeholder
+
+            // Füge alle Routennamen aus der Konfiguration hinzu
+            allRouteNames.forEach(name => {
+                // Füge nur Routen hinzu, die noch nicht in der DB sind
+                if (!routes.some(r => r.name === name)) {
+                    newRouteSelect.append(new Option(name, name));
+                }
+            });
+
+            // Füge alle bereits hinzugefügten Routen zur "Entfernen"-Dropdown hinzu
+            routes.forEach(route => {
+                routeToRemoveSelect.append(new Option(route.name, route.id));
+            });
+
+            newRouteSelect.select2({
+                theme: "bootstrap-5",
+                width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+                placeholder: $(this).data('placeholder'),
+                dropdownParent: newRouteSelect.parent()
+            });
+            routeToRemoveSelect.select2({
+                theme: "bootstrap-5",
+                width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+                placeholder: $(this).data('placeholder'),
+                dropdownParent: routeToRemoveSelect.parent()
+            });
+        }
+
+
+        // --- API-Aufrufe (Frontend-Logik) ---
+        async function addPlayer() {
+            const playerName = document.getElementById('newPlayerName').value.trim();
             if (!playerName) {
-                showMessage('Bitte gib einen Spielernamen ein.', 'info');
+                showMessage('error', 'Bitte geben Sie einen Spielernamen ein.');
                 return;
             }
             try {
@@ -811,27 +658,21 @@ function renderGlobalOrders() {
                 if (!response.ok) {
                     throw new Error(result.error || 'Fehler beim Hinzufügen des Spielers');
                 }
-                document.getElementById('playerNameInput').value = '';
-                showMessage('Spieler hinzugefügt!', 'success');
+                document.getElementById('newPlayerName').value = '';
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
             } catch (error) {
                 console.error('Fehler beim Hinzufügen des Spielers:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
+                showMessage('error', error.message);
             }
-        });
+        }
 
-        document.getElementById('addRouteBtn').addEventListener('click', async () => {
-            const routeName = routeDropdown.getSelectedValue();
+        async function addRoute() {
+            const routeName = $('#newRouteName').val(); // Select2 holt den Wert
             if (!routeName) {
-                showMessage('Bitte wähle eine Route aus der Liste aus.', 'info');
+                showMessage('error', 'Bitte wählen Sie eine Route aus.');
                 return;
             }
-            const isRouteAlreadyAdded = routes.some(r => r.name === routeName);
-            if (isRouteAlreadyAdded) {
-                showMessage(`Die Route "${routeName}" wurde bereits hinzugefügt.`, 'info');
-                routeDropdown.reset();
-                return;
-            }
-
             try {
                 const response = await fetch('/api/add_route', {
                     method: 'POST',
@@ -842,165 +683,280 @@ function renderGlobalOrders() {
                 if (!response.ok) {
                     throw new Error(result.error || 'Fehler beim Hinzufügen der Route');
                 }
-                routeDropdown.reset();
-                showMessage('Route hinzugefügt!', 'success');
-            }
-            catch (error) {
+                $('#newRouteName').val(null).trigger('change'); // Select2 zurücksetzen
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
+            } catch (error) {
                 console.error('Fehler beim Hinzufügen der Route:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
+                showMessage('error', error.message);
             }
-        });
+        }
 
-        // NEUER EVENT LISTENER FÜR "ROUTE ENTFERNEN"
-        document.getElementById('removeRouteBtn').addEventListener('click', async () => {
-            const routeName = removeRouteDropdown.getSelectedValue();
-            if (!routeName) {
-                showMessage('Bitte wähle eine Route zum Entfernen aus der Liste aus.', 'info');
+        async function toggleGlobalOrder(orderNumber) {
+            try {
+                const response = await fetch('/api/toggle_global_order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_number: orderNumber })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Umschalten des Ordensstatus');
+                }
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Umschalten des Ordensstatus:', error);
+                showMessage('error', error.message);
+            }
+        }
+
+        function confirmResetAllData() {
+            if (confirm('Sind Sie sicher, dass Sie ALLE Pokémon-Fänge und Routen-Stati zurücksetzen möchten? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                resetAllData();
+            }
+        }
+
+        async function resetAllData() {
+            try {
+                const response = await fetch('/api/reset_all_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Zurücksetzen der Daten');
+                }
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Zurücksetzen aller Daten:', error);
+                showMessage('error', error.message);
+            }
+        }
+
+        function confirmClearRouteData(routeId = null) {
+            let idToClear = routeId;
+            if (idToClear === null) {
+                idToClear = $('#routeToRemove').val();
+                if (!idToClear) {
+                    showMessage('error', 'Bitte wählen Sie eine Route zum Entfernen aus.');
+                    return;
+                }
+            }
+
+            const routeName = routes.find(r => r.id == idToClear)?.name || 'diese Route';
+            if (confirm(`Sind Sie sicher, dass Sie die Route "${routeName}" und alle zugehörigen Fänge löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+                clearRouteData(idToClear);
+            }
+        }
+
+        async function clearRouteData(routeId) {
+            try {
+                const response = await fetch('/api/clear_route_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ route_id: routeId })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Löschen der Route');
+                }
+                $('#routeToRemove').val(null).trigger('change'); // Select2 zurücksetzen
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Löschen der Route:', error);
+                showMessage('error', error.message);
+            }
+        }
+
+        function confirmFullDbReset() {
+            if (confirm('WARNUNG: Sind Sie sicher, dass Sie die GESAMTE Datenbank vollständig zurücksetzen möchten? Dies löscht ALLE Spieler, Routen, Fänge und Konfigurationen und kann NICHT rückgängig gemacht werden!')) {
+                fullDbReset();
+            }
+        }
+
+        async function fullDbReset() {
+            try {
+                const response = await fetch('/api/full_db_reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim vollständigen Datenbank-Reset');
+                }
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim vollständigen Datenbank-Reset:', error);
+                showMessage('error', error.message);
+            }
+        }
+
+        // --- NEUE STRING EXPORT/IMPORT FUNKTIONEN ---
+        async function exportAllDataAsString() {
+            const exportTextArea = document.getElementById('exportDataString');
+            exportTextArea.value = 'Exportiere Daten... Bitte warten...';
+            try {
+                const response = await fetch('/api/export_all_data_string', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!response.ok) {
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.error || 'Fehler beim Exportieren der Daten als String.');
+                }
+                const data = await response.json();
+                // Formatieren des JSON-Strings für bessere Lesbarkeit
+                exportTextArea.value = JSON.stringify(data, null, 2); 
+                showMessage('success', 'Daten erfolgreich als String exportiert.');
+            } catch (error) {
+                console.error('Fehler beim Exportieren der Daten als String:', error);
+                exportTextArea.value = `Fehler beim Export: ${error.message}`;
+                showMessage('error', `Fehler beim Export: ${error.message}`);
+            }
+        }
+
+        function copyExportString() {
+            const exportTextArea = document.getElementById('exportDataString');
+            exportTextArea.select();
+            exportTextArea.setSelectionRange(0, 99999); // Für mobile Geräte
+            document.execCommand('copy');
+            showMessage('success', 'Exportierter String in die Zwischenablage kopiert.');
+        }
+
+        function confirmImportDataAsString() {
+            if (confirm('WARNUNG: Sind Sie sicher, dass Sie Daten aus dem String importieren möchten? Dies überschreibt ALLE aktuellen Daten in der Anwendung und kann NICHT rückgängig gemacht werden!')) {
+                importAllDataAsString();
+            }
+        }
+
+        async function importAllDataAsString() {
+            const importString = document.getElementById('importDataString').value.trim();
+            const password = document.getElementById('importPassword').value;
+
+            if (!importString) {
+                showMessage('error', 'Bitte fügen Sie einen Daten-String zum Importieren ein.');
                 return;
             }
-            const routeToRemove = routes.find(r => r.name === routeName);
-            if (!routeToRemove) {
-                showMessage(`Route "${routeName}" nicht gefunden.`, 'error');
+            if (!password) {
+                showMessage('error', 'Bitte geben Sie das Import-Passwort ein.');
                 return;
             }
 
-            if (confirm(`Sicher, dass die Route "${routeName}" und ALLE zugehörigen Pokémon-Fänge und Stati gelöscht werden sollen? Diese Aktion kann NICHT rückgängig gemacht werden!`)) {
-                try {
-                    const response = await fetch('/api/clear_route_data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ route_id: routeToRemove.id })
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                    } else {
-                        showMessage(`Route "${routeName}" erfolgreich entfernt!`, 'success');
-                        removeRouteDropdown.reset();
-                    }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Entfernen der Route:', error);
-                    showMessage('Netzwerkfehler beim Entfernen der Route.', 'error');
+            try {
+                const response = await fetch('/api/import_all_data_string', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data_string: importString, password: password })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Importieren der Daten aus String.');
                 }
+                document.getElementById('importDataString').value = ''; // Textfeld leeren
+                document.getElementById('importPassword').value = ''; // Passwortfeld leeren
+                // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Importieren der Daten aus String:', error);
+                showMessage('error', error.message);
             }
+        }
+
+
+        // --- Socket.IO Events ---
+        socket.on('connect', () => {
+            console.log('Verbunden mit Socket.IO');
         });
 
+        socket.on('disconnect', () => {
+            console.log('Verbindung zu Socket.IO getrennt');
+        });
 
-        document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
-            if (confirm('Sicher, dass ALLE gefangenen Pokémon und ALLE Routen-Stati zurückgesetzt werden sollen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
-                try {
-                    const response = await fetch('/api/reset_all_data', {
-                        method: 'POST'
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                    } else {
-                        showMessage('Alle Daten erfolgreich zurückgesetzt!', 'success');
-                    }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen aller Daten.', error);
-                    showMessage('Netzwerkfehler beim Zurücksetzen aller Daten.', 'error');
-                }
+        socket.on('player_added', (data) => {
+            console.log('Spieler hinzugefügt:', data);
+            fetchDataAndRender();
+        });
+
+        socket.on('route_added', (data) => {
+            console.log('Route hinzugefügt:', data);
+            fetchDataAndRender();
+        });
+
+        socket.on('catch_updated', (data) => {
+            console.log('Fang aktualisiert:', data);
+            // Finde den aktualisierten Fang und aktualisiere ihn im lokalen Array
+            const index = catches.findIndex(c => c.player_id === data.player_id && c.route_id === data.route_id);
+            if (index !== -1) {
+                catches[index].pokemon_name = data.pokemon_name;
+            } else {
+                // Falls der Eintrag neu ist (sollte nicht passieren, da sie initialisiert werden)
+                catches.push(data);
             }
+            renderTable(); // Tabelle neu rendern, um die Änderung zu zeigen
         });
 
-        // NEUER EVENT LISTENER FÜR "KURZANSICHT ÖFFNEN"
-        document.getElementById('openSummaryBtn').addEventListener('click', () => {
-            window.open('/summary', '_blank');
-        });
-
-        // NEUER EVENT LISTENER FÜR "DATENBANK VOLLSTÄNDIG ZURÜCKSETZEN"
-        document.getElementById('resetDatabaseBtn').addEventListener('click', async () => {
-            if (confirm('WARNUNG: Dies wird die GESAMTE Datenbank zurücksetzen (Spieler, Routen, Fänge, Orden)! Diese Aktion kann NICHT rückgängig gemacht werden. Sicher?')) {
-                try {
-                    const response = await fetch('/api/full_db_reset', {
-                        method: 'POST'
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                    } else {
-                        showMessage('Datenbank vollständig zurückgesetzt! Seite wird neu geladen.', 'success');
-                        setTimeout(() => { location.reload(); }, 1000);
-                    }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen der Datenbank:', error);
-                    showMessage('Netzwerkfehler beim Zurücksetzen der Datenbank.', 'error');
-                }
+        socket.on('global_order_toggled', (data) => {
+            console.log('Globaler Orden-Status umgeschaltet:', data);
+            const order = globalOrders.find(o => o.order_number === data.order_number);
+            if (order) {
+                order.is_obtained = data.is_obtained;
             }
+            renderGlobalOrders();
         });
 
+        socket.on('route_status_updated', (data) => {
+            console.log('Routenstatus aktualisiert:', data);
+            const route = routes.find(r => r.id === data.route_id);
+            if (route) {
+                route.status = data.status_text;
+            }
+            renderTable(); // Tabelle neu rendern, um den Status zu aktualisieren
+        });
 
-        // --- SocketIO Event Listener (für Echtzeit-Updates) ---
-        socket.on('connect', () => {
-            console.log('Verbunden mit dem Server über SocketIO!');
-            showMessage('Verbunden mit dem Server!', 'success');
-            fetchDataAndRender();
-        });
+        socket.on('all_data_reset', () => {
+            console.log('Alle Daten zurückgesetzt');
+            fetchDataAndRender();
+            showMessage('success', 'Alle Pokémon-Fänge und Routen-Stati zurückgesetzt.');
+        });
 
-        socket.on('disconnect', () => {
-            console.log('Verbindung zum Server getrennt.');
-            showMessage('Verbindung zum Server getrennt!', 'error');
-        });
+        socket.on('route_deleted', (data) => {
+            console.log('Route gelöscht:', data);
+            fetchDataAndRender();
+            showMessage('success', `Route mit ID ${data.route_id} gelöscht.`);
+        });
 
-        socket.on('player_added', (data) => {
-            console.log('Neuer Spieler hinzugefügt (SocketIO):', data);
-            fetchDataAndRender();
-        });
+        socket.on('full_db_reset', () => {
+            console.log('Vollständiger Datenbank-Reset');
+            fetchDataAndRender();
+            showMessage('success', 'Datenbank vollständig zurückgesetzt.');
+        });
 
-        socket.on('route_added', (data) => {
-            console.log('Neue Route hinzugefügt (SocketIO):', data);
-            fetchDataAndRender();
-        });
+        socket.on('config_saved', (data) => {
+            console.log(`Konfigurationsdatei ${data.filename} gespeichert.`);
+            // Wenn routes.json oder pokemon_names.json gespeichert werden, müssen wir reload_app_configs triggern
+            // Dies geschieht bereits serverseitig, aber ein erneutes Laden der Daten ist gut.
+            fetchDataAndRender(); 
+            showMessage('success', `Datei ${data.filename} erfolgreich gespeichert.`);
+        });
 
-        socket.on('catch_updated', (data) => {
-            console.log('Fang aktualisiert (SocketIO):', data);
-            const existingCatch = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
-            if (existingCatch) {
-                existingCatch.pokemon_name = data.pokemon_name;
-            } else {
-                catches.push(data);
-            }
-            renderTable();
-        });
+        socket.on('configs_reloaded', () => {
+            console.log('App-Konfigurationen neu geladen.');
+            fetchDataAndRender(); // Daten neu laden, um die aktualisierten Listen zu erhalten
+            showMessage('success', 'App-Konfigurationen neu geladen.');
+        });
 
-        socket.on('global_order_toggled', (data) => {
-            console.log('Globaler Orden-Status aktualisiert (SocketIO):', data);
-            const existingOrderIndex = globalOrders.findIndex(o => o.order_number === data.order_number);
-            if (existingOrderIndex !== -1) {
-                globalOrders[existingOrderIndex].is_obtained = data.is_obtained;
-            } else {
-                globalOrders.push(data);
-            }
-            renderGlobalOrders();
-        });
+        socket.on('import_completed', () => {
+            console.log('Import abgeschlossen.');
+            fetchDataAndRender(); // Daten nach Import neu laden
+            showMessage('success', 'Daten erfolgreich aus String wiederhergestellt.');
+        });
 
-        socket.on('route_status_updated', (data) => {
-            console.log('Routenstatus aktualisiert (SocketIO):', data);
-            const routeToUpdate = routes.find(r => r.id === data.route_id);
-            if (routeToUpdate) {
-                routeToUpdate.status = data.status_text;
-            }
-            fetchDataAndRender();
-        });
-
-        socket.on('all_data_reset', () => {
-            console.log('Alle Daten zurückgesetzt (SocketIO)!');
-            fetchDataAndRender();
-        });
-
-        socket.on('route_data_cleared', (data) => {
-            console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
-            fetchDataAndRender();
-        });
-
-        socket.on('full_db_reset', () => {
-            console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
-            showMessage('Datenbank vollständig zurückgesetzt von einem anderen Client! Seite wird neu geladen.', 'info');
-            setTimeout(() => { location.reload(); }, 1000);
-        });
-
-    </script>
+        // Initiales Laden der Daten
+        document.addEventListener('DOMContentLoaded', fetchDataAndRender);
+    </script>
 </body>
 </html>
