@@ -11,21 +11,12 @@ import threading
 import time
 import socket
 
-
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION'
-socketio = SocketIO(app, cors_allowed_origins="*")
-
-# --- Globale Daten aus JSON laden (für App-Start, nicht für DB-Init) ---
-# Diese Funktion ist jetzt in models.py ausgelagert und wird dort verwendet
-# Hier nur die Listen vorbereiten, die die App direkt braucht.
-# Da load_json_data nun aus models.py stammt, müssen wir es hier importieren,
-# oder die Listen direkt laden, da sie für ALL_ROUTES und ALL_POKEMON_NAMES in app.py benötigt werden.
-# Um Code-Duplizierung zu vermeiden, verschieben wir diese in eine separate Hilfsdatei oder
-# lassen sie von models.py zurückgeben. Für jetzt kopiere ich die Version von models.py hier rein.
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 def load_json_data_for_app_startup(filename):
-    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename) # Absoluten Pfad verwenden
+    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
     try:
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
@@ -44,15 +35,12 @@ ALL_ROUTES = [item['name'] for item in load_json_data_for_app_startup('routes.js
 ALL_POKEMON_NAMES = [item['name'] for item in load_json_data_for_app_startup('pokemon_names.json')]
 
 
-# --- Datenbank-Initialisierung beim Start der App ---
 with app.app_context():
     init_db()
 
-# --- Hilfsfunktion für Datenbank-Session ---
 def get_db_session():
     return SessionLocal()
 
-# --- Routen für HTML-Seiten ---
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -61,12 +49,12 @@ def index():
 def summary():
     return render_template('summary.html')
 
-# --- API Routen ---
 @app.route('/api/data')
 def get_all_data():
     session = get_db_session()
+    # Wichtig: Routen nach ID sortieren, um die Einfügereihenfolge zu behalten
+    routes = session.query(Route).order_by(Route.id).all()
     players = session.query(Player).all()
-    routes = session.query(Route).all()
     catches = session.query(PokemonCatch).all()
     global_orders = session.query(GlobalOrder).all()
     level_caps = session.query(LevelCap).all()
@@ -94,7 +82,7 @@ def get_all_data():
         'global_orders': global_orders_data,
         'level_caps': level_caps_data,
         'all_pokemon_names': ALL_POKEMON_NAMES,
-        'all_route_names': ALL_ROUTES,
+        'all_route_names': ALL_ROUTES, # Sendet immer noch alle Routennamen aus JSON
     })
 
 @app.route('/api/add_player', methods=['POST'])
@@ -279,26 +267,27 @@ def clear_route_data():
 
     session = get_db_session()
     try:
-        route_entry = session.query(Route).filter_by(id=route_id).first()
-        if route_entry:
-            route_entry.status = ""
-        session.query(PokemonCatch).filter_by(route_id=route_id).update({PokemonCatch.pokemon_name: None})
+        # Finde die Route zum Löschen, damit die Cascade-Regel greift
+        route_to_delete = session.query(Route).filter_by(id=route_id).first()
+        if not route_to_delete:
+            return jsonify({'error': f'Route mit ID {route_id} nicht gefunden.'}), 404
+
+        session.delete(route_to_delete) # Löscht Route und kaskadierend Fänge
         session.commit()
-        socketio.emit('route_data_cleared', {'route_id': route_id})
-        return jsonify({'message': f'Daten für Route {route_id} zurückgesetzt.'}), 200
+        socketio.emit('route_deleted', {'route_id': route_id}) # NEU: Event für gelöschte Route
+        return jsonify({'message': f'Route {route_to_delete.name} und zugehörige Daten gelöscht.'}), 200
     except Exception as e:
         session.rollback()
-        print(f"Fehler beim Zurücksetzen der Routendaten: {e}")
+        print(f"Fehler beim Löschen der Route: {e}")
         return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
     finally:
         session.close()
 
-# NEUER API-ENDPUNKT FÜR VOLLSTÄNDIGEN DATENBANK-RESET
 @app.route('/api/full_db_reset', methods=['POST'])
 def full_db_reset():
     try:
-        reset_full_db() # Ruft die Funktion aus models.py auf
-        socketio.emit('full_db_reset') # Neues SocketIO-Event
+        reset_full_db()
+        socketio.emit('full_db_reset')
         return jsonify({'message': 'Datenbank vollständig zurückgesetzt.'}), 200
     except Exception as e:
         print(f"Fehler beim vollständigen Datenbank-Reset: {e}")

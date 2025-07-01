@@ -13,7 +13,7 @@
             background-color: #f0f4f8;
             color: #2d3748;
         }
-        .main-content-wrapper { /* NEU: Wrapper für Zoom */
+        .main-content-wrapper { /* Wrapper für Zoom */
             transform-origin: top center; /* Skaliert von oben/Mitte */
         }
         .container {
@@ -50,12 +50,6 @@
             flex-shrink: 0;
             padding-right: 0.5rem;
         }
-        /* .pokemon-name { /* Wird jetzt durch Dropdown ersetzt, diese Klasse ist für den Text nicht mehr primär */
-            font-weight: 600;
-            color: #4a5568;
-            flex-grow: 1;
-            text-align: right;
-        } */
         .level-cap-display-summary {
             background-color: #d1fae5;
             color: #065f46;
@@ -63,23 +57,23 @@
         }
         /* CSS-KLASSEN FÜR ROUTEN-STATUS (in Summary) */
         .route-status-orange {
-            background-color: #ffedd5; /* Very light orange */
-            color: #c2410c; /* Darker orange */
+            background-color: #ffedd5;
+            color: #c2410c;
         }
         .route-status-red {
-            background-color: #fee2e2; /* Very light red */
-            color: #b91c1c; /* Darker red */
+            background-color: #fee2e2;
+            color: #b91c1c;
         }
 
         /* Custom Dropdown Styles (angepasst für Summary) */
         .custom-select-container {
             position: relative;
-            width: auto; /* Anpassen für kompaktere Darstellung */
-            min-width: 120px; /* Mindestbreite */
+            width: auto;
+            min-width: 120px;
         }
         .custom-select-input {
             width: 100%;
-            padding: 0.4rem 0.6rem; /* Kleineres Padding */
+            padding: 0.4rem 0.6rem;
             border: 1px solid #ccc;
             border-radius: 0.375rem;
             background-color: #fff;
@@ -89,7 +83,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.875rem; /* Kleinere Schrift */
+            font-size: 0.875rem;
         }
         .custom-select-input::after {
             content: '▼';
@@ -103,7 +97,7 @@
             background-color: #fff;
             border: 1px solid #ccc;
             border-radius: 0.375rem;
-            max-height: 200px; /* Kann angepasst werden */
+            max-height: 200px;
             overflow-y: auto;
             z-index: 1000;
             margin-top: 0.25rem;
@@ -114,13 +108,13 @@
             display: block;
         }
         .custom-select-option {
-            padding: 0.4rem 0.6rem; /* Kleineres Padding */
+            padding: 0.4rem 0.6rem;
             cursor: pointer;
             line-height: 1.5;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            font-size: 0.875rem; /* Kleinere Schrift */
+            font-size: 0.875rem;
         }
         .custom-select-option:hover {
             background-color: #f0f4f8;
@@ -132,7 +126,8 @@
     </style>
 </head>
 <body class="bg-gray-100 p-6">
-    <div class="main-content-wrapper"> <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
+    <div class="main-content-wrapper">
+        <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
             <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Soul Link Kurzansicht</h1>
 
             <nav class="text-center mb-6 flex justify-center items-center gap-4">
@@ -152,14 +147,16 @@
                 Lade Daten... Wenn dies zu lange dauert, sind möglicherweise keine Spieler oder Routen vorhanden, oder der Server ist nicht erreichbar.
             </div>
         </div>
-    </div> <script>
+    </div>
+
+    <script>
         const socket = io();
         let players = [];
         let routes = [];
         let catches = [];
         let globalOrders = [];
         let levelCaps = [];
-        let allPokemonNames = []; // Wird jetzt auch in Summary benötigt
+        let allPokemonNames = [];
         let currentZoom = 1.0;
         const zoomStep = 0.1;
         const mainContentWrapper = document.querySelector('.main-content-wrapper');
@@ -179,12 +176,12 @@
         }
 
         document.getElementById('zoomInBtn').addEventListener('click', () => {
-            currentZoom += zoomStep;
+            currentZoom = Math.min(2.0, currentZoom + zoomStep);
             applyZoom();
         });
 
         document.getElementById('zoomOutBtn').addEventListener('click', () => {
-            currentZoom = Math.max(0.5, currentZoom - zoomStep); // Minimaler Zoom 0.5
+            currentZoom = Math.max(0.5, currentZoom - zoomStep);
             applyZoom();
         });
 
@@ -195,13 +192,18 @@
 
 
         // --- Custom Dropdown Logic ---
-        // Diese Funktion ist generisch und wird jetzt direkt mit den Element-Referenzen aufgerufen
         function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
             const container = containerElement;
             const input = inputElement;
             const optionsDiv = optionsElement;
             const optionsList = optionsListElement;
-            const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null; // Suchfeld nur suchen, wenn es erwartet wird
+
+            const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
+
+            if (!container || !input || !optionsDiv || !optionsList) {
+                console.error("Fehler: Eines der Dropdown-Elemente konnte nicht gefunden werden.");
+                return null;
+            }
 
             let selectedValue = null;
             let currentItems = initialItemsArray;
@@ -293,47 +295,55 @@
             };
         }
 
-        // --- Funktion für Pokémon-Dropdown in Summary ---
+        // Funktion für Pokémon-Dropdown in Summary
         function createPokemonDropdownSummary(parentElement, initialValue, playerId, routeId) {
             const container = document.createElement('div');
+            container.id = `pokemon-dropdown-summary-container-${playerId}-${routeId}`;
             container.className = 'custom-select-container';
 
             const input = document.createElement('div');
+            input.id = `pokemon-input-summary-${playerId}-${routeId}`;
             input.className = 'custom-select-input text-sm';
             input.textContent = initialValue || 'Pokémon eintragen';
             input.tabIndex = 0;
             container.appendChild(input);
 
             const optionsDiv = document.createElement('div');
+            optionsDiv.id = `pokemon-options-summary-${playerId}-${routeId}`;
             optionsDiv.className = 'custom-select-options';
             container.appendChild(optionsDiv);
 
-            const searchInput = document.createElement('input'); // Suchfeld im HTML erstellen
+            const searchInput = document.createElement('input');
             searchInput.type = 'text';
             searchInput.className = 'custom-select-search';
             searchInput.placeholder = 'Suche Pokémon...';
             optionsDiv.appendChild(searchInput);
 
             const optionsList = document.createElement('div');
+            optionsList.id = `pokemon-options-list-summary-${playerId}-${routeId}`;
             optionsList.className = 'options-list';
             optionsDiv.appendChild(optionsList);
 
-            parentElement.appendChild(container); // Füge Container zum DOM hinzu
+            parentElement.appendChild(container);
 
             const dropdown = setupCustomDropdown(
-                container, // Direkte Referenz
+                container,
                 input,
                 optionsDiv,
                 optionsList,
                 'Pokémon eintragen',
-                allPokemonNames, // Nutze die globale allPokemonNames
+                allPokemonNames,
                 async (selectedPokemonName) => {
                     await updateCatchOnServer(playerId, routeId, selectedPokemonName);
                 },
-                true // hasSearch = true für Pokémon-Dropdown
+                true
             );
 
-            dropdown.setSelectedValue(initialValue);
+            if (dropdown) {
+                dropdown.setSelectedValue(initialValue);
+            } else {
+                console.error(`Fehler: Pokémon-Dropdown für Spieler ${playerId}, Route ${routeId} konnte nicht initialisiert werden.`);
+            }
             return dropdown;
         }
 
@@ -346,49 +356,49 @@
                 });
                 if (!response.ok) {
                     const errorData = await response.json();
-                    console.error('Fehler beim Aktualisieren des Fangs:', errorData.error);
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
             } catch (error) {
-                console.error('Netzwerkfehler beim Aktualisieren des Fangs:', error);
+                console.error('Fehler beim Aktualisieren des Fangs:', error);
             }
         }
 
         // Funktion zum Erstellen des Status-Dropdowns für eine Route (in summary.html)
         function createStatusDropdownSummary(parentElement, initialStatus, routeId) {
             const statusOptions = [
-                "", // Leerzeile
+                "",
                 "Death Link",
                 "No Catch",
                 ...players.map(player => `Death (${player.name})`)
             ];
 
             const containerDiv = document.createElement('div');
-            containerDiv.id = `status-dropdown-summary-container-${routeId}`; // Setze ID, falls benötigt
+            containerDiv.id = `status-dropdown-summary-container-${routeId}`;
             containerDiv.className = 'custom-select-container';
 
             const inputDiv = document.createElement('div');
-            inputDiv.id = `status-dropdown-summary-input-${routeId}`; // Setze ID
+            inputDiv.id = `status-dropdown-summary-input-${routeId}`;
             inputDiv.className = 'custom-select-input text-sm';
             inputDiv.tabIndex = 0;
             containerDiv.appendChild(inputDiv);
 
             const optionsDiv = document.createElement('div');
-            optionsDiv.id = `status-dropdown-summary-options-${routeId}`; // Setze ID
+            optionsDiv.id = `status-dropdown-summary-options-${routeId}`;
             optionsDiv.className = 'custom-select-options';
 
             const optionsListDiv = document.createElement('div');
+            optionsListDiv.id = `status-options-list-summary-${routeId}`;
             optionsListDiv.className = 'options-list';
             optionsDiv.appendChild(optionsListDiv);
             containerDiv.appendChild(optionsDiv);
 
-            parentElement.appendChild(containerDiv); // Füge den kompletten Container dem ParentElement hinzu
-
+            parentElement.appendChild(containerDiv);
 
             const dropdown = setupCustomDropdown(
-                containerDiv,    // containerElement
-                inputDiv,        // inputElement
-                optionsDiv,      // optionsElement
-                optionsListDiv,  // optionsListElement
+                containerDiv,
+                inputDiv,
+                optionsDiv,
+                optionsListDiv,
                 'Status',
                 statusOptions,
                 async (selectedStatus) => {
@@ -406,7 +416,7 @@
                         console.error('Netzwerkfehler beim Aktualisieren des Routenstatus:', error);
                     }
                 },
-                false // hasSearch = false für Status-Dropdown
+                false
             );
 
             if (dropdown) {
@@ -433,7 +443,7 @@
                 catches = data.catches;
                 globalOrders = data.global_orders;
                 levelCaps = data.level_caps;
-                allPokemonNames = data.all_pokemon_names; // Initialisiere allPokemonNames
+                allPokemonNames = data.all_pokemon_names || [];
 
 
                 renderPlayerSummaries();
@@ -475,11 +485,12 @@
                 playerRoutesDiv.className = 'player-routes';
                 playerSection.appendChild(playerRoutesDiv);
 
-                const sortedRoutes = [...routes].sort((a, b) => a.name.localeCompare(b.name));
+                // Hier die Sortierung entfernen, um die Hinzufügungsreihenfolge zu behalten
+                const displayedRoutes = [...routes]; // routes kommt schon nach ID sortiert vom Backend
 
-                sortedRoutes.forEach(route => {
+                displayedRoutes.forEach(route => {
                     const routeItem = document.createElement('div');
-                    routeItem.className = 'route-item grid grid-cols-[1fr_1fr_min-content] gap-2 items-center'; // 3 Spalten für Route, Pokemon, Status (kein extra Clear-Button hier)
+                    routeItem.className = 'route-item grid grid-cols-[1fr_1fr_min-content] gap-2 items-center';
 
                     const routeNameSpan = document.createElement('span');
                     routeNameSpan.className = 'route-name text-gray-700';
@@ -494,7 +505,6 @@
 
                     routeItem.appendChild(routeNameSpan);
 
-                    // Pokémon-Dropdown statt nur Text
                     const pokemonDropdownContainer = document.createElement('div');
                     pokemonDropdownContainer.className = 'pokemon-dropdown-summary';
                     const existingCatch = catches.find(c => c.player_id === player.id && c.route_id === route.id);
@@ -507,7 +517,7 @@
                     createStatusDropdownSummary(statusDropdownContainer, route.status, route.id);
                     routeItem.appendChild(statusDropdownContainer);
 
-                    // KEINE Clear-Buttons pro Route in Summary mehr
+
                     playerRoutesDiv.appendChild(routeItem);
                 });
                 playerSummaryContainer.appendChild(playerSection);
@@ -574,6 +584,11 @@
         });
         socket.on('route_data_cleared', (data) => {
             console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
+            fetchDataAndRenderSummary();
+        });
+        socket.on('full_db_reset', () => {
+            console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
+            // Hier keine setTimeout(location.reload) da das der Hauptansicht vorbehalten ist
             fetchDataAndRenderSummary();
         });
 

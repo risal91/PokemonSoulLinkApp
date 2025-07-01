@@ -127,7 +127,7 @@
         <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md flex justify-around items-center gap-4 flex-wrap">
             <button id="openSummaryBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Kurzansicht öffnen</button>
             <button id="resetDatabaseBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Datenbank vollständig zurücksetzen</button>
-            </div>
+        </div>
 
         <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
             <h2 class="text-2xl font-semibold text-blue-700 mb-4">Spielerverwaltung</h2>
@@ -140,7 +140,7 @@
 
         <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
             <h2 class="text-2xl font-semibold text-blue-700 mb-4">Routenverwaltung</h2>
-            <div class="flex flex-col md:flex-row gap-4 items-center">
+            <div class="flex flex-col md:flex-row gap-4 items-center mb-4">
                 <div class="custom-select-container flex-grow" id="routeSelectContainer">
                     <div id="routeSelectInput" class="custom-select-input" tabindex="0">Route auswählen...</div>
                     <div id="routeSelectOptions" class="custom-select-options">
@@ -149,6 +149,16 @@
                     </div>
                 </div>
                 <button id="addRouteBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Route hinzufügen</button>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 items-center">
+                <div class="custom-select-container flex-grow" id="removeRouteSelectContainer">
+                    <div id="removeRouteSelectInput" class="custom-select-input" tabindex="0">Route zum Entfernen auswählen...</div>
+                    <div id="removeRouteSelectOptions" class="custom-select-options">
+                        <input type="text" class="custom-select-search" placeholder="Suche Route...">
+                        <div class="options-list"></div>
+                    </div>
+                </div>
+                <button id="removeRouteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Ausgewählte Route entfernen</button>
             </div>
         </div>
 
@@ -187,12 +197,16 @@
         const messageBox = document.getElementById('messageBox');
 
         let players = [];
-        let routes = [];
+        let routes = []; // routes enthält jetzt auch das 'status'-Feld
         let catches = [];
         let globalOrders = [];
         let levelCaps = [];
         let allPokemonNames = [];
         let allRouteNames = [];
+
+        // Hinzugefügte Variable für das "Route entfernen"-Dropdown
+        let removeRouteDropdown;
+
 
         // --- Custom Dropdown Logic ---
         function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
@@ -298,8 +312,9 @@
             };
         }
 
-        let routeDropdown;
+        let routeDropdown; // Für Hinzufügen-Dropdown
 
+        // Funktion zum Erstellen des Pokémon-Dropdowns (unverändert)
         function createPokemonDropdown(parentElement, initialValue, playerId, routeId) {
             const container = document.createElement('div');
             container.id = `pokemon-dropdown-container-${playerId}-${routeId}`;
@@ -368,6 +383,7 @@
             }
         }
 
+        // Funktion zum Erstellen des Status-Dropdowns für eine Route (in index.html)
         function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
             const statusOptions = [
                 "",
@@ -465,6 +481,7 @@
                 allPokemonNames = data.all_pokemon_names || [];
                 allRouteNames = data.all_route_names || [];
 
+                // Route hinzufügen Dropdown
                 const routeSelectContainer = document.getElementById('routeSelectContainer');
                 const routeSelectInput = document.getElementById('routeSelectInput');
                 const routeSelectOptions = document.getElementById('routeSelectOptions');
@@ -484,6 +501,31 @@
                 } else {
                     routeDropdown.updateItems(allRouteNames);
                     routeDropdown.reset();
+                }
+
+                // Route entfernen Dropdown
+                const removeRouteSelectContainer = document.getElementById('removeRouteSelectContainer');
+                const removeRouteSelectInput = document.getElementById('removeRouteSelectInput');
+                const removeRouteSelectOptions = document.getElementById('removeRouteSelectOptions');
+                const removeRouteSelectOptionsList = removeRouteSelectOptions.querySelector('.options-list');
+
+                // Konvertiere das 'routes'-Array in ein Array von Routennamen für das Dropdown
+                const currentRouteNames = routes.map(r => r.name);
+
+                if (!removeRouteDropdown) {
+                    removeRouteDropdown = setupCustomDropdown(
+                        removeRouteSelectContainer,
+                        removeRouteSelectInput,
+                        removeRouteSelectOptions,
+                        removeRouteSelectOptionsList,
+                        'Route zum Entfernen auswählen...',
+                        currentRouteNames, // Nutze die aktuell vorhandenen Routennamen
+                        null,
+                        true
+                    );
+                } else {
+                    removeRouteDropdown.updateItems(currentRouteNames); // Aktualisiere die Liste
+                    removeRouteDropdown.reset(); // Setzt Auswahl zurück
                 }
 
                 renderTable();
@@ -545,12 +587,13 @@
 
                 const actionsCell = document.createElement('td');
                 actionsCell.className = 'py-3 px-4 border-b border-gray-200';
+                // Der Clear Route Button bleibt hier, da er "Fänge und Status zurücksetzen" macht, nicht Route entfernen
                 const clearRouteBtn = document.createElement('button');
                 clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-300 ease-in-out';
-                clearRouteBtn.textContent = 'Clear Route';
-                clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" löschen`;
+                clearRouteBtn.textContent = 'Clear Route Daten'; // Umbenannt zur Klarheit
+                clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" zurücksetzen`;
                 clearRouteBtn.addEventListener('click', async () => {
-                    if (confirm(`Sicher, dass alle gefangenen Pokémon und der Status für Route "${route.name}" gelöscht werden sollen?`)) {
+                    if (confirm(`Sicher, dass ALLE Pokémon und der Status für Route "${route.name}" zurückgesetzt werden sollen?`)) {
                         try {
                             const response = await fetch('/api/clear_route_data', {
                                 method: 'POST',
@@ -559,13 +602,13 @@
                             });
                             if (!response.ok) {
                                 const errorData = await response.json();
-                                showMessage(`Fehler beim Löschen der Routendaten: ${errorData.error}`, 'error');
+                                showMessage(`Fehler beim Zurücksetzen der Routendaten: ${errorData.error}`, 'error');
                             } else {
                                 showMessage(`Daten für Route "${route.name}" zurückgesetzt!`, 'success');
                             }
                         } catch (error) {
-                            console.error('Netzwerkfehler beim Löschen der Routendaten:', error);
-                            showMessage('Netzwerkfehler beim Löschen der Routendaten.', 'error');
+                            console.error('Netzwerkfehler beim Zurücksetzen der Routendaten:', error);
+                            showMessage('Netzwerkfehler beim Zurücksetzen der Routendaten.', 'error');
                         }
                     }
                 });
@@ -720,6 +763,41 @@ function renderGlobalOrders() {
             }
         });
 
+        // NEUER EVENT LISTENER FÜR "ROUTE ENTFERNEN"
+        document.getElementById('removeRouteBtn').addEventListener('click', async () => {
+            const routeName = removeRouteDropdown.getSelectedValue();
+            if (!routeName) {
+                showMessage('Bitte wähle eine Route zum Entfernen aus der Liste aus.', 'info');
+                return;
+            }
+            const routeToRemove = routes.find(r => r.name === routeName);
+            if (!routeToRemove) {
+                showMessage(`Route "${routeName}" nicht gefunden.`, 'error');
+                return;
+            }
+
+            if (confirm(`Sicher, dass die Route "${routeName}" und ALLE zugehörigen Pokémon-Fänge und Stati gelöscht werden sollen? Diese Aktion kann NICHT rückgängig gemacht werden!`)) {
+                try {
+                    const response = await fetch('/api/clear_route_data', { // API-Endpunkt ist clear_route_data
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ route_id: routeToRemove.id })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        showMessage(`Fehler beim Entfernen der Route: ${errorData.error}`, 'error');
+                    } else {
+                        showMessage(`Route "${routeName}" erfolgreich entfernt!`, 'success');
+                        removeRouteDropdown.reset(); // Setzt Auswahl zurück
+                    }
+                } catch (error) {
+                    console.error('Netzwerkfehler beim Entfernen der Route:', error);
+                    showMessage('Netzwerkfehler beim Entfernen der Route.', 'error');
+                }
+            }
+        });
+
+
         document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
             if (confirm('Sicher, dass ALLE gefangenen Pokémon und ALLE Routen-Stati zurückgesetzt werden sollen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
                 try {
@@ -816,23 +894,23 @@ function renderGlobalOrders() {
             if (routeToUpdate) {
                 routeToUpdate.status = data.status_text;
             }
-            renderTable();
+            fetchDataAndRender(); // Daten neu laden, um die aktualisierte Route zu sehen
         });
 
         socket.on('all_data_reset', () => {
             console.log('Alle Daten zurückgesetzt (SocketIO)!');
             fetchDataAndRender();
         });
+
         socket.on('route_data_cleared', (data) => {
+            // Dieses Event wird jetzt vom clear_route_data API-Endpunkt gesendet
+            // obwohl der Endpunkt die Route löscht, nicht nur die Daten leert.
             console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
-            fetchDataAndRender();
+            fetchDataAndRender(); // Seite neu laden, um die gelöschte Route zu entfernen
         });
 
-        // NEUER SOCKETIO EVENT LISTENER FÜR VOLLSTÄNDIGEN DB-RESET
         socket.on('full_db_reset', () => {
             console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
-            // Die Seite wird vom Button-Klicker neu geladen, aber hier reagieren wir auch,
-            // falls der Reset von einem anderen Client ausgelöst wurde.
             showMessage('Datenbank vollständig zurückgesetzt von einem anderen Client! Seite wird neu geladen.', 'info');
             setTimeout(() => { location.reload(); }, 1000);
         });

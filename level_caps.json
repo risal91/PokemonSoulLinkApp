@@ -1,15 +1,15 @@
 [
-  {"name": "1. Arena", "order_number": 1, "max_level": 15, "adjusted_level": 13},
-  {"name": "2. Arena", "order_number": 2, "max_level": 20, "adjusted_level": 18},
-  {"name": "3. Arena", "order_number": 3, "max_level": 25, "adjusted_level": 23},
+  {"name": "1. Arena", "order_number": 1, "max_level": 14, "adjusted_level": 12},
+  {"name": "2. Arena", "order_number": 2, "max_level": 22, "adjusted_level": 20},
+  {"name": "3. Arena", "order_number": 3, "max_level": 30, "adjusted_level": 28},
   {"name": "4. Arena", "order_number": 4, "max_level": 30, "adjusted_level": 28},
-  {"name": "5. Arena", "order_number": 5, "max_level": 35, "adjusted_level": 33},
-  {"name": "6. Arena", "order_number": 6, "max_level": 40, "adjusted_level": 38},
-  {"name": "7. Arena", "order_number": 7, "max_level": 45, "adjusted_level": 43},
-  {"name": "8. Arena", "order_number": 8, "max_level": 50, "adjusted_level": 48},
-  {"name": "Top 4 (1)", "order_number": 9, "max_level": 55, "adjusted_level": 53},
-  {"name": "Top 4 (2)", "order_number": 10, "max_level": 60, "adjusted_level": 58},
-  {"name": "Top 4 (3)", "order_number": 11, "max_level": 65, "adjusted_level": 63},
-  {"name": "Top 4 (4)", "order_number": 12, "max_level": 70, "adjusted_level": 68},
-  {"name": "Champ", "order_number": 13, "max_level": 75, "adjusted_level": 73}
+  {"name": "5. Arena", "order_number": 5, "max_level": 36, "adjusted_level": 34},
+  {"name": "6. Arena", "order_number": 6, "max_level": 39, "adjusted_level": 37},
+  {"name": "7. Arena", "order_number": 7, "max_level": 42, "adjusted_level": 40},
+  {"name": "8. Arena", "order_number": 8, "max_level": 49, "adjusted_level": 47},
+  {"name": "Top 4 (1)", "order_number": 9, "max_level": 57, "adjusted_level": 55},
+  {"name": "Top 4 (2)", "order_number": 10, "max_level": 59, "adjusted_level": 57},
+  {"name": "Top 4 (3)", "order_number": 11, "max_level": 60, "adjusted_level": 58},
+  {"name": "Top 4 (4)", "order_number": 12, "max_level": 61, "adjusted_level": 59},
+  {"name": "Champ", "order_number": 13, "max_level": 66, "adjusted_level": 64}
 ]
