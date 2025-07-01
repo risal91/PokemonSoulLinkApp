@@ -1,43 +1,54 @@
 # app.py
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
-from models import init_db, SessionLocal, Player, Route, PokemonCatch, GlobalOrder, LevelCap
+from models import init_db, SessionLocal, Player, Route, PokemonCatch, GlobalOrder, LevelCap, reset_full_db # NEU: reset_full_db importieren
 import json
 import os
+import threading
+import time
+import socket
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-def load_json_data(filename):
-    filepath = os.path.join(os.path.dirname(__file__), filename)
+# --- Globale Daten aus JSON laden (für App-Start, nicht für DB-Init) ---
+# Diese Funktion ist jetzt in models.py ausgelagert und wird dort verwendet
+# Hier nur die Listen vorbereiten, die die App direkt braucht.
+# Da load_json_data nun aus models.py stammt, müssen wir es hier importieren,
+# oder die Listen direkt laden, da sie für ALL_ROUTES und ALL_POKEMON_NAMES in app.py benötigt werden.
+# Um Code-Duplizierung zu vermeiden, verschieben wir diese in eine separate Hilfsdatei oder
+# lassen sie von models.py zurückgeben. Für jetzt kopiere ich die Version von models.py hier rein.
+
+def load_json_data_for_app_startup(filename):
+    filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename) # Absoluten Pfad verwenden
     try:
-        if not os.path.exists(filepath):
-            print(f"Warning: {filename} not found. Returning empty list. Please create this file.")
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump([], f)
-            return []
-        if os.path.getsize(filepath) == 0:
-            print(f"Warning: {filename} is empty. Returning empty list.")
-            return []
         with open(filepath, 'r', encoding='utf-8') as f:
             return json.load(f)
+    except FileNotFoundError:
+        print(f"Error: {filename} not found for app startup. Returning empty list.")
+        return []
     except json.JSONDecodeError:
-        print(f"Error: Could not decode JSON from {filename}. File might be corrupted. Content: {open(filepath, 'r', encoding='utf-8').read()[:200]}...")
+        print(f"Error: Could not decode JSON from {filename} for app startup.")
         return []
     except Exception as e:
-        print(f"An unexpected error occurred while loading {filename}: {e}")
+        print(f"An unexpected error occurred while loading {filename} for app startup: {e}")
         return []
 
-ALL_ROUTES = [item['name'] for item in load_json_data('routes.json')]
-ALL_POKEMON_NAMES = [item['name'] for item in load_json_data('pokemon_names.json')]
 
+ALL_ROUTES = [item['name'] for item in load_json_data_for_app_startup('routes.json')]
+ALL_POKEMON_NAMES = [item['name'] for item in load_json_data_for_app_startup('pokemon_names.json')]
+
+
+# --- Datenbank-Initialisierung beim Start der App ---
 with app.app_context():
     init_db()
 
+# --- Hilfsfunktion für Datenbank-Session ---
 def get_db_session():
     return SessionLocal()
 
+# --- Routen für HTML-Seiten ---
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -46,6 +57,7 @@ def index():
 def summary():
     return render_template('summary.html')
 
+# --- API Routen ---
 @app.route('/api/data')
 def get_all_data():
     session = get_db_session()
@@ -237,17 +249,14 @@ def update_route_status():
     finally:
         session.close()
 
-# NEUER API-ENDPUNKT: Alle Pokémon und Routen-Stati zurücksetzen
 @app.route('/api/reset_all_data', methods=['POST'])
 def reset_all_data():
     session = get_db_session()
     try:
-        # Alle Pokémon-Fänge auf NULL setzen
         session.query(PokemonCatch).update({PokemonCatch.pokemon_name: None})
-        # Alle Routen-Stati auf Leerstring setzen
         session.query(Route).update({Route.status: ""})
         session.commit()
-        socketio.emit('all_data_reset') # Neues Event für Frontend
+        socketio.emit('all_data_reset')
         return jsonify({'message': 'Alle Pokémon-Fänge und Routen-Stati zurückgesetzt.'}), 200
     except Exception as e:
         session.rollback()
@@ -256,7 +265,6 @@ def reset_all_data():
     finally:
         session.close()
 
-# NEUER API-ENDPUNKT: Pokémon und Status für eine spezifische Route zurücksetzen
 @app.route('/api/clear_route_data', methods=['POST'])
 def clear_route_data():
     data = request.json
@@ -267,14 +275,12 @@ def clear_route_data():
 
     session = get_db_session()
     try:
-        # Status der Route auf Leerstring setzen
         route_entry = session.query(Route).filter_by(id=route_id).first()
         if route_entry:
             route_entry.status = ""
-        # Alle Pokémon-Fänge für diese Route auf NULL setzen
         session.query(PokemonCatch).filter_by(route_id=route_id).update({PokemonCatch.pokemon_name: None})
         session.commit()
-        socketio.emit('route_data_cleared', {'route_id': route_id}) # Neues Event für Frontend
+        socketio.emit('route_data_cleared', {'route_id': route_id})
         return jsonify({'message': f'Daten für Route {route_id} zurückgesetzt.'}), 200
     except Exception as e:
         session.rollback()
@@ -282,6 +288,17 @@ def clear_route_data():
         return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
     finally:
         session.close()
+
+# NEUER API-ENDPUNKT FÜR VOLLSTÄNDIGEN DATENBANK-RESET
+@app.route('/api/full_db_reset', methods=['POST'])
+def full_db_reset():
+    try:
+        reset_full_db() # Ruft die Funktion aus models.py auf
+        socketio.emit('full_db_reset') # Neues SocketIO-Event
+        return jsonify({'message': 'Datenbank vollständig zurückgesetzt.'}), 200
+    except Exception as e:
+        print(f"Fehler beim vollständigen Datenbank-Reset: {e}")
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
 
 
 @socketio.on('connect')
@@ -294,4 +311,18 @@ def handle_disconnect():
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, host='0.0.0.0')
+    FLASK_HOST = "0.0.0.0"
+    FLASK_PORT = 5000
+
+    def open_browser_after_start():
+        import webbrowser
+        import time
+        time.sleep(1.5)
+        try:
+            webbrowser.open_new(f"http://127.0.0.1:{FLASK_PORT}/")
+        except Exception as e:
+            print(f"Fehler beim automatischen Öffnen des Browsers: {e}")
+
+    threading.Thread(target=open_browser_after_start).start()
+
+    socketio.run(app, debug=True, host=FLASK_HOST, port=FLASK_PORT)

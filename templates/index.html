@@ -54,7 +54,7 @@
         .custom-select-input {
             width: 100%;
             padding: 0.75rem;
-            border: 1.5px solid #ccc; /* Leicht dickerer Rand für besseres Aussehen */
+            border: 1.5px solid #ccc;
             border-radius: 0.375rem;
             background-color: #fff;
             cursor: pointer;
@@ -109,20 +109,25 @@
             background-color: #e0e7ff;
             font-weight: bold;
         }
-        /* NEUE CSS-KLASSEN FÜR ROUTEN-STATUS (identisch mit summary.html, falls in index.html verwendet) */
+        /* CSS-KLASSEN FÜR ROUTEN-STATUS */
         .route-status-orange {
-            background-color: #ffedd5; /* Very light orange */
-            color: #c2410c; /* Darker orange */
+            background-color: #ffedd5;
+            color: #c2410c;
         }
         .route-status-red {
-            background-color: #fee2e2; /* Very light red */
-            color: #b91c1c; /* Darker red */
+            background-color: #fee2e2;
+            color: #b91c1c;
         }
     </style>
 </head>
 <body class="bg-gray-100 p-6">
     <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
         <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Pokémon Soul Link Challenge</h1>
+
+        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md flex justify-around items-center gap-4 flex-wrap">
+            <button id="openSummaryBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Kurzansicht öffnen</button>
+            <button id="resetDatabaseBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Datenbank vollständig zurücksetzen</button>
+            </div>
 
         <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
             <h2 class="text-2xl font-semibold text-blue-700 mb-4">Spielerverwaltung</h2>
@@ -189,14 +194,13 @@
         let allPokemonNames = [];
         let allRouteNames = [];
 
-        // --- Custom Dropdown Logic (JETZT KONSISTENT: Erwartet immer Element-Referenzen) ---
+        // --- Custom Dropdown Logic ---
         function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
             const container = containerElement;
             const input = inputElement;
             const optionsDiv = optionsElement;
             const optionsList = optionsListElement;
 
-            // Suche nach Suchfeld nur, wenn hasSearch true ist und das Element existiert
             const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
 
             if (!container || !input || !optionsDiv || !optionsList) {
@@ -298,7 +302,7 @@
 
         function createPokemonDropdown(parentElement, initialValue, playerId, routeId) {
             const container = document.createElement('div');
-            container.id = `pokemon-dropdown-container-${playerId}-${routeId}`; // IDs für setupCustomDropdown
+            container.id = `pokemon-dropdown-container-${playerId}-${routeId}`;
             container.className = 'custom-select-container';
 
             const input = document.createElement('div');
@@ -320,18 +324,18 @@
             optionsDiv.appendChild(searchInput);
 
             const optionsList = document.createElement('div');
-            optionsList.id = `pokemon-options-list-${playerId}-${routeId}`; // Eindeutige ID für optionsList
+            optionsList.id = `pokemon-options-list-${playerId}-${routeId}`;
             optionsList.className = 'options-list';
             optionsDiv.appendChild(optionsList);
 
-            parentElement.appendChild(container); // Füge Container zum DOM hinzu
+            parentElement.appendChild(container);
 
 
             const dropdown = setupCustomDropdown(
-                container,    // Direkte Referenz
-                input,        // Direkte Referenz
-                optionsDiv,   // Direkte Referenz
-                optionsList,  // Direkte Referenz
+                container,
+                input,
+                optionsDiv,
+                optionsList,
                 'Pokémon eintragen',
                 allPokemonNames,
                 async (selectedPokemonName) => {
@@ -361,14 +365,12 @@
                 }
             } catch (error) {
                 console.error('Fehler beim Aktualisieren des Fangs:', error);
-                showMessage('Fehler beim Aktualisieren des Fangs.', 'error');
             }
         }
 
-        // Funktion zum Erstellen des Status-Dropdowns für eine Route (in index.html)
         function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
             const statusOptions = [
-                "", // Leerzeile
+                "",
                 "Death Link",
                 "No Catch",
                 ...players.map(player => `Death (${player.name})`)
@@ -389,7 +391,7 @@
             optionsDiv.className = 'custom-select-options';
 
             const optionsListDiv = document.createElement('div');
-            optionsListDiv.id = `status-options-list-${routeId}`; // Eindeutige ID für optionsList
+            optionsListDiv.id = `status-options-list-${routeId}`;
             optionsListDiv.className = 'options-list';
             optionsDiv.appendChild(optionsListDiv);
             containerDiv.appendChild(optionsDiv);
@@ -398,10 +400,10 @@
 
 
             const dropdown = setupCustomDropdown(
-                containerDiv,    // Direkte Referenz
-                inputDiv,        // Direkte Referenz
-                optionsDiv,      // Direkte Referenz
-                optionsListDiv,  // Direkte Referenz
+                containerDiv,
+                inputDiv,
+                optionsDiv,
+                optionsListDiv,
                 'Status',
                 statusOptions,
                 async (selectedStatus) => {
@@ -419,7 +421,7 @@
                         console.error('Netzwerkfehler beim Aktualisieren des Routenstatus:', error);
                     }
                 },
-                false // hasSearch = false für Status-Dropdown
+                false
             );
 
             if (dropdown) {
@@ -463,20 +465,17 @@
                 allPokemonNames = data.all_pokemon_names || [];
                 allRouteNames = data.all_route_names || [];
 
-                // Initialisiere den Routen-Dropdown. Dieser hier nutzt IDs.
-                // ACHTUNG: Hier muss param4 (optionsListElement) jetzt explizit übergeben werden.
-                // Da es per ID gefunden wird, müssen wir es erst HIER finden.
                 const routeSelectContainer = document.getElementById('routeSelectContainer');
                 const routeSelectInput = document.getElementById('routeSelectInput');
                 const routeSelectOptions = document.getElementById('routeSelectOptions');
-                const routeSelectOptionsList = routeSelectOptions.querySelector('.options-list'); // Hier finden!
+                const routeSelectOptionsList = routeSelectOptions.querySelector('.options-list');
 
                 if (!routeDropdown) {
                     routeDropdown = setupCustomDropdown(
                         routeSelectContainer,
                         routeSelectInput,
                         routeSelectOptions,
-                        routeSelectOptionsList, // HIER KORRIGIERT
+                        routeSelectOptionsList,
                         'Route auswählen...',
                         allRouteNames,
                         null,
@@ -519,7 +518,6 @@
                 const routeNameCell = document.createElement('td');
                 routeNameCell.className = 'py-3 px-4 border-b border-gray-200 font-medium text-gray-800';
                 routeNameCell.textContent = route.name;
-                // Farbgebung des Routennamens basierend auf Status
                 routeNameCell.classList.remove('route-status-orange', 'route-status-red');
                 if (route.status === "Death Link" || route.status === "No Catch") {
                     routeNameCell.classList.add('route-status-orange');
@@ -540,17 +538,15 @@
                     row.appendChild(catchCell);
                 });
 
-                // Status-Dropdown-Zelle hinzufügen
                 const statusCell = document.createElement('td');
                 statusCell.className = 'py-3 px-4 border-b border-gray-200';
                 createStatusDropdownIndex(statusCell, route.status, route.id);
                 row.appendChild(statusCell);
 
-                // Clear-Button pro Route hinzufügen
                 const actionsCell = document.createElement('td');
                 actionsCell.className = 'py-3 px-4 border-b border-gray-200';
                 const clearRouteBtn = document.createElement('button');
-                clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-200 ease-in-out';
+                clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-300 ease-in-out';
                 clearRouteBtn.textContent = 'Clear Route';
                 clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" löschen`;
                 clearRouteBtn.addEventListener('click', async () => {
@@ -737,8 +733,34 @@ function renderGlobalOrders() {
                         showMessage('Alle Daten erfolgreich zurückgesetzt!', 'success');
                     }
                 } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen aller Daten:', error);
+                    console.error('Netzwerkfehler beim Zurücksetzen aller Daten.', error);
                     showMessage('Netzwerkfehler beim Zurücksetzen aller Daten.', 'error');
+                }
+            }
+        });
+
+        // NEUER EVENT LISTENER FÜR "KURZANSICHT ÖFFNEN"
+        document.getElementById('openSummaryBtn').addEventListener('click', () => {
+            window.open('/summary', '_blank'); // Öffnet /summary in einem neuen Tab
+        });
+
+        // NEUER EVENT LISTENER FÜR "DATENBANK VOLLSTÄNDIG ZURÜCKSETZEN"
+        document.getElementById('resetDatabaseBtn').addEventListener('click', async () => {
+            if (confirm('WARNUNG: Dies wird die GESAMTE Datenbank zurücksetzen (Spieler, Routen, Fänge, Orden)! Diese Aktion kann NICHT rückgängig gemacht werden. Sicher?')) {
+                try {
+                    const response = await fetch('/api/full_db_reset', {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        showMessage(`Fehler beim Zurücksetzen der Datenbank: ${errorData.error}`, 'error');
+                    } else {
+                        showMessage('Datenbank vollständig zurückgesetzt! Seite wird neu geladen.', 'success');
+                        setTimeout(() => { location.reload(); }, 1000); // Seite neu laden, um den frischen Zustand zu zeigen
+                    }
+                } catch (error) {
+                    console.error('Netzwerkfehler beim Zurücksetzen der Datenbank:', error);
+                    showMessage('Netzwerkfehler beim Zurücksetzen der Datenbank.', 'error');
                 }
             }
         });
@@ -804,6 +826,15 @@ function renderGlobalOrders() {
         socket.on('route_data_cleared', (data) => {
             console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
             fetchDataAndRender();
+        });
+
+        // NEUER SOCKETIO EVENT LISTENER FÜR VOLLSTÄNDIGEN DB-RESET
+        socket.on('full_db_reset', () => {
+            console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
+            // Die Seite wird vom Button-Klicker neu geladen, aber hier reagieren wir auch,
+            // falls der Reset von einem anderen Client ausgelöst wurde.
+            showMessage('Datenbank vollständig zurückgesetzt von einem anderen Client! Seite wird neu geladen.', 'info');
+            setTimeout(() => { location.reload(); }, 1000);
         });
 
     </script>
