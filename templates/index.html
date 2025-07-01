@@ -4,9 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokémon Soul Link Challenge</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -15,109 +18,134 @@
         }
         .container {
             max-width: 1200px;
+            margin-top: 20px;
+            margin-bottom: 20px;
         }
-        .order-button {
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        .card {
+            border-radius: 0.75rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            background-color: #fff; /* Ensure white background for cards */
         }
-        .order-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-        }
-        .order-button.obtained {
-            background-color: #48bb78; /* Green for obtained */
+        .card-header {
+            background-color: #007bff;
             color: white;
-            border-color: #38a169;
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            font-weight: bold;
+            padding: 1rem 1.25rem;
         }
-        .order-button.obtained:hover {
-            background-color: #38a169;
+        .table-responsive {
+            margin-top: 1rem;
         }
-        .order-button:not(.obtained) {
-            background-color: #e2e8f0; /* Light gray for not obtained */
-            color: #4a5568;
-            border-color: #cbd5e0;
+        .table th, .table td {
+            vertical-align: middle;
+            text-align: center;
         }
-        .order-button:not(.obtained):hover {
-            background-color: #d1d8e0;
+        .table thead th {
+            background-color: #e9ecef;
         }
-        .order-button.next-cap-highlight {
-            border-color: #8b5cf6; /* Lila Rand */
-            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.4); /* Lila Glow */
-            background-color: #ede9fe; /* Sehr helles Lila */
-        }
-
-
-        /* Styles for custom dropdown with search */
-        .custom-select-container {
-            position: relative;
-            width: 100%;
-        }
-        .custom-select-input {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1.5px solid #ccc;
+        .form-control, .btn, .select2-container .select2-selection--single {
             border-radius: 0.375rem;
-            background-color: #fff;
-            cursor: pointer;
-            text-align: left;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
         }
-        .custom-select-input::after {
-            content: '▼'; /* Dropdown arrow */
-            font-size: 0.75rem;
-            color: #4a5568;
-            margin-left: 0.5rem;
+        .alert {
+            margin-top: 1rem;
+        }
+        
+        /* Custom Dropdown Styling (adjusted from Tailwind to Bootstrap context) */
+        .custom-select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        .custom-select-trigger {
+            background-color: #fff;
+            border: 1px solid #ced4da;
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: calc(1.5em + 0.75rem + 2px); /* Align with Bootstrap input height */
+            font-size: 1rem; /* Match Bootstrap default font size */
+            color: #212529; /* Match Bootstrap default text color */
+        }
+        .custom-select-trigger::after {
+            content: '▼';
+            font-size: 0.7em;
+            margin-left: 0.5em;
+            transition: transform 0.2s;
+        }
+        .custom-select-trigger.active::after {
+            transform: rotate(180deg);
         }
         .custom-select-options {
             position: absolute;
-            width: 100%;
             background-color: #fff;
-            border: 1px solid #ccc;
+            border: 1px solid #ced4da;
             border-radius: 0.375rem;
-            max-height: 350px;
+            max-height: 200px; /* Reduced for better table fit */
             overflow-y: auto;
-            z-index: 1000;
-            margin-top: 0.25rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            z-index: 1050; /* Above Bootstrap modals (1040) if ever used together */
             display: none;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            margin-top: 4px; /* Small gap below trigger */
         }
         .custom-select-options.active {
             display: block;
         }
-        .custom-select-search {
-            width: calc(100% - 1.5rem);
+        .custom-select-option {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 1rem; /* Match Bootstrap default font size */
+            line-height: 1.5; /* Ensure line height consistency */
+            white-space: nowrap; /* Prevent wrapping */
+            overflow: hidden; /* Hide overflow */
+            text-overflow: ellipsis; /* Add ellipsis for overflow */
+        }
+        .custom-select-option:hover {
+            background-color: #e9ecef;
+        }
+        .custom-select-option.selected {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        /* FIX for "Suche Pokémon" input visibility */
+        .custom-select-options .custom-select-search {
+            width: calc(100% - 1.5rem); /* Adjust width as needed */
             padding: 0.5rem;
             margin: 0.5rem 0.75rem;
             border: 1px solid #ccc;
             border-radius: 0.375rem;
             box-sizing: border-box;
+            display: none; /* Hide by default */
         }
-        .custom-select-option {
-            padding: 0.5rem 0.75rem;
-            cursor: pointer;
-            line-height: 1.5;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .custom-select-options.active .custom-select-search {
+            display: block; /* Show when active */
         }
-        .custom-select-option:hover {
-            background-color: #f0f4f8;
+
+        /* Styling for custom messages */
+        .message-box {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000; /* Ensure it's above everything */
+            min-width: 250px;
+            text-align: center;
         }
-        .custom-select-option.selected {
-            background-color: #e0e7ff;
-            font-weight: bold;
-        }
-        /* CSS-KLASSEN FÜR ROUTEN-STATUS */
+
+        /* Route Status Colors (re-added for Bootstrap context) */
         .route-status-orange {
-            background-color: #ffedd5;
-            color: #c2410c;
+            background-color: #ffe0b2; /* Light Orange */
+            color: #e65100; /* Darker Orange */
         }
         .route-status-red {
-            background-color: #fee2e2;
-            color: #b91c1c;
+            background-color: #ffcdd2; /* Light Red */
+            color: #b71c1c; /* Darker Red */
         }
+
+        /* JSON Editor Specific */
         textarea.json-editor {
             width: 100%;
             min-height: 200px;
@@ -127,119 +155,215 @@
             border-radius: 0.375rem;
             padding: 10px;
         }
+        textarea.data-string-editor {
+            width: 100%;
+            min-height: 300px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.8em;
+            border: 1px solid #ccc;
+            border-radius: 0.375rem;
+            padding: 10px;
+            white-space: pre;
+            word-wrap: normal;
+            overflow-x: auto;
+        }
+
+        /* Order buttons styling */
+        .order-button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+        }
+        .order-button {
+            padding: 0.75rem 1rem;
+            border: 1px solid #007bff;
+            border-radius: 0.375rem;
+            background-color: #f8f9fa;
+            color: #007bff;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+            min-width: 100px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .order-button.obtained {
+            background-color: #28a745; /* Green */
+            color: white;
+            border-color: #28a745;
+        }
+        .order-button.next-cap-highlight {
+            border-color: #6f42c1; /* Purple border */
+            box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25); /* Purple glow */
+        }
+        .order-button:hover:not(.obtained) {
+            background-color: #e2e6ea;
+            border-color: #0056b3;
+        }
+        .level-cap-display {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 0.5rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
     </style>
 </head>
-<body class="bg-gray-100 p-6">
-    <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
-        <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Pokémon Soul Link Challenge</h1>
+<body>
+    <div class="container">
+        <h1 class="text-center my-4">Pokémon Soul Link Challenge</h1>
 
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md flex justify-around items-center gap-4 flex-wrap">
-            <button id="openSummaryBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Kurzansicht öffnen</button>
-            <button id="resetDatabaseBtn" class="bg-red-800 hover:bg-red-900 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Datenbank vollständig zurücksetzen</button>
-        </div>
-
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Spielerverwaltung</h2>
-            <div class="flex flex-col md:flex-row gap-4">
-                <input type="text" id="playerNameInput" placeholder="Neuer Spielername" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <button id="addPlayerBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Spieler hinzufügen</button>
+        <div class="card mb-4">
+            <div class="card-header">Globale Aktionen</div>
+            <div class="card-body d-flex justify-content-around align-items-center flex-wrap">
+                <button id="openSummaryBtn" class="btn btn-info mx-2">Kurzansicht öffnen</button>
+                <button id="resetDatabaseBtn" class="btn btn-danger mx-2">Datenbank vollständig zurücksetzen</button>
+                <button id="openExportImportModalBtn" class="btn btn-secondary mx-2" data-bs-toggle="modal" data-bs-target="#exportImportModal">Daten exportieren/importieren</button>
             </div>
-            <div id="messageBox" class="mt-4 p-3 rounded-md text-sm hidden"></div>
         </div>
 
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Routenverwaltung</h2>
-            <div class="flex flex-col md:flex-row gap-4 items-center mb-4">
-                <div class="custom-select-container flex-grow" id="routeSelectContainer">
-                    <div id="routeSelectInput" class="custom-select-input" tabindex="0">Route auswählen...</div>
-                    <div id="routeSelectOptions" class="custom-select-options">
-                        <input type="text" class="custom-select-search" placeholder="Suche Route...">
-                        <div class="options-list"></div>
+        <div class="card mb-4">
+            <div class="card-header">Spielerverwaltung</div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <input type="text" id="playerNameInput" class="form-control" placeholder="Neuer Spielername">
+                    <button id="addPlayerBtn" class="btn btn-primary">Spieler hinzufügen</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Routenverwaltung</div>
+            <div class="card-body">
+                <div class="input-group mb-3">
+                    <select id="routeSelect" class="form-select" data-placeholder="Route auswählen...">
+                        <option></option>
+                    </select>
+                    <button id="addRouteBtn" class="btn btn-primary">Route hinzufügen</button>
+                </div>
+                <div class="input-group">
+                    <select id="removeRouteSelect" class="form-select" data-placeholder="Route zum Entfernen auswählen...">
+                        <option></option>
+                    </select>
+                    <button id="removeRouteBtn" class="btn btn-danger">Ausgewählte Route entfernen</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Pokémon-Fänge Übersicht</div>
+            <div class="card-body">
+                <button id="resetAllDataBtn" class="btn btn-danger mb-3">Alle Fänge & Routen-Status zurücksetzen</button>
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="catchTable">
+                        <thead>
+                            <tr>
+                                <th>ROUTE</th>
+                                <th>STATUS</th>
+                                <th>AKTIONEN</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Globale Orden & Level Caps</div>
+            <div class="card-body">
+                <div class="order-button-group" id="globalOrdersContainer">
+                    </div>
+                <div class="level-cap-display" id="levelCapDisplay">
+                    Aktuelles Level Cap: -- (Angepasst: --)
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">Konfigurationsverwaltung (JSON-Dateien)</div>
+            <div class="card-body">
+                <p class="text-muted small mb-3">
+                    Hier können die JSON-Konfigurationsdateien direkt bearbeitet werden. Änderungen werden nach dem Speichern und Neuladen der App-Konfiguration wirksam. Beachten Sie, dass Änderungen an den Level Caps erst nach einem "Datenbank vollständig zurücksetzen"-Vorgang in die Datenbank übernommen werden.
+                </p>
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <h5 class="text-center">routes.json</h5>
+                        <textarea id="routesJsonContent" class="form-control json-editor"></textarea>
+                        <div class="d-flex justify-content-center gap-2 mt-2">
+                            <button class="btn btn-sm btn-primary" onclick="loadJsonFileContent('routes.json', 'routesJsonContent')">Laden</button>
+                            <button class="btn btn-sm btn-success" onclick="saveJsonFileContent('routes.json', 'routesJsonContent')">Speichern</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 class="text-center">pokemon_names.json</h5>
+                        <textarea id="pokemonNamesJsonContent" class="form-control json-editor"></textarea>
+                        <div class="d-flex justify-content-center gap-2 mt-2">
+                            <button class="btn btn-sm btn-primary" onclick="loadJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent')">Laden</button>
+                            <button class="btn btn-sm btn-success" onclick="saveJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent')">Speichern</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <h5 class="text-center">level_caps.json</h5>
+                        <textarea id="levelCapsJsonContent" class="form-control json-editor"></textarea>
+                        <div class="d-flex justify-content-center gap-2 mt-2">
+                            <button class="btn btn-sm btn-primary" onclick="loadJsonFileContent('level_caps.json', 'levelCapsJsonContent')">Laden</button>
+                            <button class="btn btn-sm btn-success" onclick="saveJsonFileContent('level_caps.json', 'levelCapsJsonContent')">Speichern</button>
+                        </div>
                     </div>
                 </div>
-                <button id="addRouteBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Route hinzufügen</button>
-            </div>
-            <div class="flex flex-col md:flex-row gap-4 items-center">
-                <div class="custom-select-container flex-grow" id="removeRouteSelectContainer">
-                    <div id="removeRouteSelectInput" class="custom-select-input" tabindex="0">Route zum Entfernen auswählen...</div>
-                    <div id="removeRouteSelectOptions" class="custom-select-options">
-                        <input type="text" class="custom-select-search" placeholder="Suche Route...">
-                        <div class="options-list"></div>
-                    </div>
+                <div class="text-center mt-4">
+                    <button id="reloadAppConfigsBtn" class="btn btn-info">App-Konfigurationen neu laden</button>
                 </div>
-                <button id="removeRouteBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Ausgewählte Route entfernen</button>
             </div>
         </div>
 
-        <div class="overflow-x-auto mb-8 bg-white rounded-lg shadow-md p-6 pb-40">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Pokémon-Fänge Übersicht</h2>
+    </div> <div id="messageBox" class="message-box alert d-none" role="alert"></div>
 
-            <div class="text-center mb-6">
-                <button id="resetAllDataBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Alle Fänge & Routen-Status zurücksetzen</button>
-            </div>
-
-            <table class="min-w-full bg-white border border-gray-200 rounded-lg">
-                <thead class="bg-blue-100">
-                    <tr>
-                        <th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Route</th>
-                        <th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Status</th>
-                        <th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Aktionen</th>
-                    </tr>
-                </thead>
-                <tbody id="catchTableBody">
-                    </tbody>
-            </table>
-        </div>
-
-        <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-blue-700 mb-4">Globale Orden & Level Caps</h2>
-            <div id="ordersContainer" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 xl:grid-cols-9 gap-4 mb-6">
+    <div class="modal fade" id="exportImportModal" tabindex="-1" aria-labelledby="exportImportModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportImportModalLabel">Daten exportieren / importieren</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-            <div id="levelCapDisplay" class="text-center text-xl font-bold text-green-700 p-4 bg-green-100 rounded-md shadow-inner hidden">
-                Aktuelles Level Cap: <span id="currentLevelCapMax" class="text-green-800"></span> (Angepasst: <span id="currentLevelCapAdjusted" class="text-green-800"></span>)
-            </div>
-        </div>
-
-        <div class="mb-8 p-6 bg-yellow-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-yellow-700 mb-4">Konfigurationsverwaltung (JSON-Dateien)</h2>
-            <div class="text-sm text-yellow-800 mb-4 p-3 bg-yellow-100 border border-yellow-200 rounded">
-                Hier können die JSON-Konfigurationsdateien direkt bearbeitet werden. Änderungen an diesen Dateien werden nach dem Speichern und Neuladen der App-Konfiguration wirksam. Beachten Sie, dass Änderungen an den Level Caps erst nach einem "Datenbank vollständig zurücksetzen"-Vorgang in die Datenbank übernommen werden.
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">routes.json</h3>
-                    <textarea id="routesJsonContent" class="json-editor"></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button id="loadRoutesJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
-                        <button id="saveRoutesJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="modalExportDataString" class="form-label">Exportierter Daten-String:</label>
+                        <textarea id="modalExportDataString" class="form-control data-string-editor" rows="10" readonly placeholder="Exportierter Daten-String wird hier angezeigt..."></textarea>
+                        <button class="btn btn-secondary btn-sm mt-2" onclick="copyModalExportString()">String kopieren</button>
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <label for="modalImportDataString" class="form-label">Daten-String zum Importieren einfügen:</label>
+                        <textarea id="modalImportDataString" class="form-control data-string-editor" rows="10" placeholder="Fügen Sie hier den exportierten Daten-String ein..."></textarea>
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="password" id="modalImportPassword" class="form-control" placeholder="Passwort für Import (testPW)">
+                        <button class="btn btn-warning" onclick="confirmImportDataAsStringModal()">Daten importieren</button>
+                    </div>
+                    <div class="alert alert-warning mt-3" role="alert">
+                        **ACHTUNG:** Das Importieren von Daten überschreibt alle aktuellen Daten in der Anwendung! Stellen Sie sicher, dass Sie einen gültigen und vertrauenswürdigen Daten-String verwenden. Das Standardpasswort ist `testPW`.
                     </div>
                 </div>
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">pokemon_names.json</h3>
-                    <textarea id="pokemonNamesJsonContent" class="json-editor"></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button id="loadPokemonNamesJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
-                        <button id="savePokemonNamesJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
-                    </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" onclick="exportAllDataAsStringModal()">Alle Daten exportieren</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Schließen</button>
                 </div>
-                <div>
-                    <h3 class="text-xl font-semibold text-gray-700 mb-2">level_caps.json</h3>
-                    <textarea id="levelCapsJsonContent" class="json-editor"></textarea>
-                    <div class="flex gap-2 mt-2">
-                        <button id="loadLevelCapsJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
-                        <button id="saveLevelCapsJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
-                    </div>
-                </div>
-            </div>
-            <div class="mt-8 text-center">
-                <button id="reloadAppConfigsBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">App-Konfigurationen neu laden</button>
             </div>
         </div>
-
-
     </div>
 
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.0/dist/jquery.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
+    
     <script>
         const socket = io();
         const messageBox = document.getElementById('messageBox');
@@ -255,14 +379,36 @@
         let removeRouteDropdown; // Für das "Route entfernen"-Dropdown
         let routeDropdown; // Für das "Route hinzufügen"-Dropdown
 
+        // --- Hilfsfunktionen für Nachrichten ---
+        function showMessage(message, type = 'info') {
+            messageBox.textContent = message;
+            // Entferne alle Alert-Typ-Klassen
+            messageBox.classList.remove('alert-danger', 'alert-success', 'alert-info', 'd-none');
+            // Füge die korrekte Klasse hinzu
+            if (type === 'error') {
+                messageBox.classList.add('alert-danger');
+            } else if (type === 'success') {
+                messageBox.classList.add('alert-success');
+            } else {
+                messageBox.classList.add('alert-info'); // Standard für info
+            }
+            messageBox.classList.remove('d-none'); // Zeige die Nachricht
 
-        // --- Custom Dropdown Logic ---
+            setTimeout(() => {
+                messageBox.classList.add('d-none');
+            }, 5000);
+        }
+
+
+        // --- Custom Dropdown Logic (angepasst für Bootstrap Select2 und manuelle DOM-Erstellung) ---
+        // Diese Funktion wird jetzt nur für die Custom Selects in der Tabelle verwendet.
+        // Die Route-Selects verwenden Select2.
         function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
             const container = containerElement;
             const input = inputElement;
             const optionsDiv = optionsElement;
             const optionsList = optionsListElement;
-
+            
             const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
 
             if (!container || !input || !optionsDiv || !optionsList) {
@@ -281,7 +427,7 @@
 
                 if (filteredItems.length === 0) {
                     const noResult = document.createElement('div');
-                    noResult.className = 'custom-select-option text-gray-500 italic';
+                    noResult.className = 'custom-select-option';
                     noResult.textContent = 'Keine Ergebnisse gefunden.';
                     optionsList.appendChild(noResult);
                     return;
@@ -360,7 +506,7 @@
             };
         }
 
-        // Funktion zum Erstellen des Pokémon-Dropdowns
+        // Funktion zum Erstellen des Pokémon-Dropdowns (Custom HTML Select)
         function createPokemonDropdown(parentElement, initialValue, playerId, routeId) {
             const container = document.createElement('div');
             container.id = `pokemon-dropdown-container-${playerId}-${routeId}`;
@@ -368,7 +514,7 @@
 
             const input = document.createElement('div');
             input.id = `pokemon-input-${playerId}-${routeId}`;
-            input.className = 'custom-select-input text-sm';
+            input.className = 'custom-select-input'; // Removed text-sm for better default size
             input.textContent = initialValue || 'Pokémon eintragen';
             input.tabIndex = 0;
             container.appendChild(input);
@@ -378,7 +524,7 @@
             optionsDiv.className = 'custom-select-options';
             container.appendChild(optionsDiv);
 
-            const searchInput = document.createElement('input');
+            const searchInput = document.createElement('input'); // This is the element for "Suche Pokémon..."
             searchInput.type = 'text';
             searchInput.className = 'custom-select-search';
             searchInput.placeholder = 'Suche Pokémon...';
@@ -389,8 +535,7 @@
             optionsList.className = 'options-list';
             optionsDiv.appendChild(optionsList);
 
-            parentElement.appendChild(container);
-
+            parentElement.appendChild(container); // Append container to DOM first
 
             const dropdown = setupCustomDropdown(
                 container,
@@ -402,7 +547,7 @@
                 async (selectedPokemonName) => {
                     await updateCatchOnServer(playerId, routeId, selectedPokemonName);
                 },
-                true
+                true // hasSearch = true for Pokemon dropdown
             );
 
             if (dropdown) {
@@ -426,15 +571,17 @@
                 }
             } catch (error) {
                 console.error('Fehler beim Aktualisieren des Fangs:', error);
+                showMessage('error', `Fehler beim Aktualisieren des Fangs: ${error.message}`);
             }
         }
 
-        // Funktion zum Erstellen des Status-Dropdowns für eine Route
+        // Funktion zum Erstellen des Status-Dropdowns für eine Route (in index.html)
         function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
             const statusOptions = [
                 "",
                 "Death Link",
                 "No Catch",
+                // Dynamisch Spieler-Todesfälle hinzufügen
                 ...players.map(player => `Death (${player.name})`)
             ];
 
@@ -445,6 +592,7 @@
             const inputDiv = document.createElement('div');
             inputDiv.id = `status-dropdown-index-input-${routeId}`;
             inputDiv.className = 'custom-select-input text-sm';
+            inputDiv.textContent = initialStatus || 'Status';
             inputDiv.tabIndex = 0;
             containerDiv.appendChild(inputDiv);
 
@@ -459,7 +607,6 @@
             containerDiv.appendChild(optionsDiv);
 
             parentElement.appendChild(containerDiv);
-
 
             const dropdown = setupCustomDropdown(
                 containerDiv,
@@ -477,10 +624,11 @@
                         });
                         if (!response.ok) {
                             const errorData = await response.json();
-                            console.error('Fehler beim Aktualisieren des Routenstatus:', errorData.error);
+                            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                         }
                     } catch (error) {
-                        console.error('Netzwerkfehler beim Aktualisieren des Routenstatus:', error);
+                        console.error('Fehler beim Aktualisieren des Routenstatus:', error);
+                        showMessage('error', `Fehler beim Aktualisieren des Routenstatus: ${error.message}`);
                     }
                 },
                 false
@@ -495,19 +643,26 @@
         }
 
 
-        // --- Hilfsfunktionen für UI-Nachrichten ---
+        // --- Message Box (neu in Bootstrap 5 Style) ---
         function showMessage(message, type = 'info') {
-            messageBox.textContent = message;
-            messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+            const messageDiv = document.getElementById('messageBox');
+            // Remove all existing Bootstrap alert classes
+            messageDiv.classList.remove('alert-danger', 'alert-success', 'alert-info', 'd-none');
+
+            // Add the correct class based on type
             if (type === 'error') {
-                messageBox.classList.add('bg-red-100', 'text-red-700');
+                messageDiv.classList.add('alert-danger');
             } else if (type === 'success') {
-                messageBox.classList.add('bg-green-100', 'text-green-700');
+                messageDiv.classList.add('alert-success');
             } else {
-                messageBox.classList.add('bg-blue-100', 'text-blue-700');
+                messageDiv.classList.add('alert-info');
             }
+            messageDiv.textContent = message;
+            messageDiv.classList.remove('d-none'); // Show the message
+
+            // Hide the message after 5 seconds
             setTimeout(() => {
-                messageBox.classList.add('hidden');
+                messageDiv.classList.add('d-none');
             }, 5000);
         }
 
@@ -516,7 +671,8 @@
             try {
                 const response = await fetch('/api/data');
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
                 players = data.players;
@@ -527,234 +683,225 @@
                 allPokemonNames = data.all_pokemon_names || [];
                 allRouteNames = data.all_route_names || [];
 
-                // Route hinzufügen Dropdown
-                const routeSelectContainer = document.getElementById('routeSelectContainer');
-                const routeSelectInput = document.getElementById('routeSelectInput');
-                const routeSelectOptions = document.getElementById('routeSelectOptions');
-                const routeSelectOptionsList = routeSelectOptions.querySelector('.options-list');
+                // Route hinzufügen Dropdown (Select2)
+                const routeSelect = $('#routeSelect');
+                routeSelect.empty().append('<option></option>'); // Placeholder
+                allRouteNames.forEach(name => {
+                    if (!routes.some(r => r.name === name)) { // Nur Routen, die noch nicht in der DB sind
+                        routeSelect.append(new Option(name, name));
+                    }
+                });
+                routeSelect.select2({
+                    theme: "bootstrap-5",
+                    width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+                    placeholder: "Route auswählen...",
+                    dropdownParent: routeSelect.parent()
+                });
+                routeDropdown = routeSelect.data('select2'); // Speichere die Select2 Instanz
+                routeSelect.val(null).trigger('change'); // Setze initialen Wert
 
-                if (!routeDropdown) {
-                    routeDropdown = setupCustomDropdown(
-                        routeSelectContainer,
-                        routeSelectInput,
-                        routeSelectOptions,
-                        routeSelectOptionsList,
-                        'Route auswählen...',
-                        allRouteNames,
-                        null,
-                        true
-                    );
-                } else {
-                    routeDropdown.updateItems(allRouteNames);
-                    routeDropdown.reset();
-                }
 
-                // Route entfernen Dropdown
-                const removeRouteSelectContainer = document.getElementById('removeRouteSelectContainer');
-                const removeRouteSelectInput = document.getElementById('removeRouteSelectInput');
-                const removeRouteSelectOptions = document.getElementById('removeRouteSelectOptions');
-                const removeRouteSelectOptionsList = removeRouteSelectOptions.querySelector('.options-list');
+                // Route entfernen Dropdown (Select2)
+                const removeRouteSelect = $('#removeRouteSelect');
+                removeRouteSelect.empty().append('<option></option>'); // Placeholder
+                routes.forEach(route => { // Nur bereits hinzugefügte Routen
+                    removeRouteSelect.append(new Option(route.name, route.id));
+                });
+                removeRouteSelect.select2({
+                    theme: "bootstrap-5",
+                    width: $(this).data('width') ? $(this).data('width') : $(this).hasClass('w-100') ? '100%' : 'style',
+                    placeholder: "Route zum Entfernen auswählen...",
+                    dropdownParent: removeRouteSelect.parent()
+                });
+                removeRouteDropdown = removeRouteSelect.data('select2'); // Speichere die Select2 Instanz
+                removeRouteSelect.val(null).trigger('change'); // Setze initialen Wert
 
-                const currentRouteNames = routes.map(r => r.name);
-
-                if (!removeRouteDropdown) {
-                    removeRouteDropdown = setupCustomDropdown(
-                        removeRouteSelectContainer,
-                        removeRouteSelectInput,
-                        removeRouteSelectOptions,
-                        removeRouteSelectOptionsList,
-                        'Route zum Entfernen auswählen...',
-                        currentRouteNames,
-                        null,
-                        true
-                    );
-                } else {
-                    removeRouteDropdown.updateItems(currentRouteNames);
-                    removeRouteDropdown.reset();
-                }
 
                 renderTable();
                 renderGlobalOrders();
+                renderLevelCap(); // Added this call
+
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
-                showMessage('Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.', 'error');
+                showMessage('error', `Fehler beim Laden der Daten: ${error.message}`);
             }
         }
 
         function renderTable() {
-            const catchTableBody = document.getElementById('catchTableBody');
-            catchTableBody.innerHTML = '';
+            const tableBody = document.querySelector('#catchTable tbody');
+            tableBody.innerHTML = ''; // Leere den Body
 
-            const tableHeadRow = document.querySelector('thead tr');
-            tableHeadRow.innerHTML = '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Route</th>';
+            const tableHeadRow = document.querySelector('#catchTable thead tr');
+            tableHeadRow.innerHTML = '<th>ROUTE</th>'; // Route Spalte
 
+            // Dynamische Spieler-Spalten
             players.forEach(player => {
-                const th = document.createElement('th');
-                th.className = 'py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider';
-                th.textContent = player.name;
-                tableHeadRow.appendChild(th);
+                tableHeadRow.innerHTML += `<th>${player.name.toUpperCase()}</th>`;
             });
-            tableHeadRow.innerHTML += '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Status</th>';
-            tableHeadRow.innerHTML += '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Aktionen</th>';
 
+            tableHeadRow.innerHTML += '<th>STATUS</th><th>AKTIONEN</th>'; // Status & Aktionen Spalten
 
             routes.forEach(route => {
-                const row = document.createElement('tr');
-                row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
-
-                const routeNameCell = document.createElement('td');
-                routeNameCell.className = 'py-3 px-4 border-b border-gray-200 font-medium text-gray-800';
+                const row = tableBody.insertRow();
+                const routeNameCell = row.insertCell();
                 routeNameCell.textContent = route.name;
-                routeNameCell.classList.remove('route-status-orange', 'route-status-red');
+                routeNameCell.classList.add('fw-bold'); // Bold text
+                
+                // Route Status Farben
                 if (route.status === "Death Link" || route.status === "No Catch") {
-                    routeNameCell.classList.add('route-status-orange');
-                } else if (route.status.startsWith("Death (")) {
-                    routeNameCell.classList.add('route-status-red');
+                    routeNameCell.classList.add('text-warning'); // Bootstrap Warning color
+                    routeNameCell.classList.remove('text-danger');
+                } else if (route.status && route.status.startsWith("Death (")) {
+                    routeNameCell.classList.add('text-danger'); // Bootstrap Danger color
+                    routeNameCell.classList.remove('text-warning');
+                } else {
+                    routeNameCell.classList.remove('text-warning', 'text-danger'); // Clear colors
                 }
-                row.appendChild(routeNameCell);
 
 
                 players.forEach(player => {
-                    const catchCell = document.createElement('td');
-                    catchCell.className = 'py-3 px-4 border-b border-gray-200';
-
-                    const existingCatch = catches.find(c => c.player_id === player.id && c.route_id === route.id);
-                    const pokemonName = existingCatch ? existingCatch.pokemon_name : null;
-
-                    createPokemonDropdown(catchCell, pokemonName, player.id, route.id);
-                    row.appendChild(catchCell);
+                    const cell = row.insertCell();
+                    const catchEntry = catches.find(c => c.player_id === player.id && c.route_id === route.id);
+                    const pokemonName = catchEntry ? (catchEntry.pokemon_name || 'Pokémon eintragen') : 'Pokémon eintragen';
+                    
+                    // Erstelle und initialisiere das Custom Pokemon Dropdown
+                    createPokemonDropdown(cell, pokemonName, player.id, route.id);
                 });
 
-                const statusCell = document.createElement('td');
-                statusCell.className = 'py-3 px-4 border-b border-gray-200';
+                // Status Dropdown Zelle
+                const statusCell = row.insertCell();
                 createStatusDropdownIndex(statusCell, route.status, route.id);
-                row.appendChild(statusCell);
 
-                const actionsCell = document.createElement('td');
-                actionsCell.className = 'py-3 px-4 border-b border-gray-200';
-                const clearRouteBtn = document.createElement('button');
-                clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-300 ease-in-out';
-                clearRouteBtn.textContent = 'Clear Route Daten';
-                clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" zurücksetzen`;
-                clearRouteBtn.addEventListener('click', async () => {
-                    if (confirm(`Sicher, dass ALLE Pokémon und der Status für Route "${route.name}" zurückgesetzt werden sollen?`)) {
-                        try {
-                            const response = await fetch('/api/clear_route_data', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ route_id: route.id })
-                            });
-                            if (!response.ok) {
-                                const errorData = await response.json();
-                                showMessage(`Fehler beim Zurücksetzen der Routendaten: ${errorData.error}`, 'error');
-                            } else {
-                                showMessage(`Daten für Route "${route.name}" zurückgesetzt!`, 'success');
-                            }
-                        } catch (error) {
-                            console.error('Netzwerkfehler beim Zurücksetzen der Routendaten.', error);
-                            showMessage('Netzwerkfehler beim Zurücksetzen der Routendaten.', 'error');
-                        }
-                    }
-                });
-                actionsCell.appendChild(clearRouteBtn);
-                row.appendChild(actionsCell);
+                // Aktionen Zelle
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `<button class="btn btn-danger btn-sm" onclick="confirmClearRouteData(${route.id})">Clear Route Daten</button>`;
+            });
+            // Initialisiere Custom Selects nach dem Rendern der Tabelle
+            initializeCustomSelects(); 
+            initializeStatusSelects(); 
+        }
 
-                catchTableBody.appendChild(row);
+        function renderGlobalOrders() {
+            const container = document.getElementById('globalOrdersContainer');
+            container.innerHTML = ''; // Vorherige Buttons entfernen
+
+            // Sortiere Orden nach order_number
+            globalOrders.sort((a, b) => a.order_number - b.order_number);
+
+            globalOrders.forEach(order => {
+                const button = document.createElement('button');
+                button.classList.add('global-order-button');
+                
+                // Finde das zugehörige LevelCap, um den Namen anzuzeigen
+                const lc = levelCaps.find(l => l.order_number === order.order_number);
+                button.textContent = lc ? lc.name : `Orden ${order.order_number}`; // Zeigt Namen an
+
+                if (order.is_obtained) {
+                    button.classList.add('obtained');
+                }
+
+                // Hervorheben des nächsten Level Caps
+                const nextLevelCap = getNextLevelCap(); // Hol dir das nächste Level Cap
+                if (nextLevelCap && lc && lc.order_number === nextLevelCap.order_number && !order.is_obtained) {
+                    button.classList.add('next-cap-highlight');
+                }
+
+                button.onclick = () => toggleGlobalOrder(order.order_number);
+                container.appendChild(button);
             });
         }
 
-function renderGlobalOrders() {
-            const ordersContainer = document.getElementById('ordersContainer');
-            ordersContainer.innerHTML = '';
-            const levelCapDisplay = document.getElementById('levelCapDisplay');
-            const currentLevelCapMax = document.getElementById('currentLevelCapMax');
-            const currentLevelCapAdjusted = document.getElementById('currentLevelCapAdjusted');
+        function getNextLevelCap() {
+            // Finden des letzten erreichten Ordens
+            const lastObtainedOrderNumber = globalOrders.reduce((max, order) => {
+                return order.is_obtained ? Math.max(max, order.order_number) : max;
+            }, 0);
 
+            // LevelCaps nach order_number sortieren, um das nächste zu finden
             levelCaps.sort((a, b) => a.order_number - b.order_number);
 
-            let lastObtainedOrderNumber = 0;
-            globalOrders.forEach(go => {
-                if (go.is_obtained && go.order_number > lastObtainedOrderNumber) {
-                    lastObtainedOrderNumber = go.order_number;
+            // Finde das erste Level Cap, das noch nicht erreicht wurde
+            let nextLc = null;
+            for (const lc of levelCaps) {
+                const isObtained = globalOrders.some(go => go.order_number === lc.order_number && go.is_obtained);
+                if (!isObtained) {
+                    nextLc = lc;
+                    break;
                 }
-            });
-
-            let nextLevelCap = null;
-            nextLevelCap = levelCaps.find(lc => {
-                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
-                return !(globalOrder && globalOrder.is_obtained);
-            });
-
-            if (!nextLevelCap && levelCaps.length > 0) {
-                nextLevelCap = levelCaps[levelCaps.length - 1];
             }
-
-            if (nextLevelCap) {
-                currentLevelCapMax.textContent = nextLevelCap.max_level;
-                currentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
-                levelCapDisplay.classList.remove('hidden');
-            } else if (levelCaps.length > 0) {
-                currentLevelCapMax.textContent = levelCaps[levelCaps.length - 1].max_level;
-                currentLevelCapAdjusted.textContent = levelCaps[levelCaps.length - 1].adjusted_level;
-                levelCapDisplay.classList.remove('hidden');
-            } else {
-                levelCapDisplay.classList.add('hidden');
-            }
-
-            levelCaps.forEach(lc => {
-                const button = document.createElement('button');
-                button.className = 'order-button p-4 rounded-lg border-2 font-bold text-base shadow-md flex items-center justify-center text-center transition duration-200 ease-in-out';
-                button.textContent = lc.name;
-                button.dataset.orderNumber = lc.order_number;
-
-                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
-
-                if (globalOrder && globalOrder.is_obtained) {
-                    button.classList.add('obtained');
-                } else {
-                    button.classList.remove('obtained');
-                }
-
-                if (nextLevelCap && lc.order_number === nextLevelCap.order_number && !(globalOrder && globalOrder.is_obtained)) {
-                    button.classList.add('next-cap-highlight');
-                } else {
-                    button.classList.remove('next-cap-highlight');
-                }
-
-                button.addEventListener('click', async () => {
-                    const clickedOrderNumber = parseInt(button.dataset.orderNumber);
-
-                    const clickedLevelCap = levelCaps.find(item => item.order_number === clickedOrderNumber);
-                    if (clickedLevelCap) {
-                        currentLevelCapMax.textContent = clickedLevelCap.max_level;
-                        currentLevelCapAdjusted.textContent = clickedLevelCap.adjusted_level;
-                        levelCapDisplay.classList.remove('hidden');
-                    }
-
-                    try {
-                        const response = await fetch('/api/toggle_global_order', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ order_number: clickedOrderNumber })
-                        });
-                        if (!response.ok) {
-                            const errorResult = await response.json();
-                            throw new Error(errorResult.error || `HTTP error! status: ${response.status}`);
-                        }
-                    } catch (error) {
-                        console.error('Fehler beim Umschalten des globalen Orden-Status:', error);
-                        showMessage(`Fehler: ${error.message}`, 'error');
-                    }
-                });
-                ordersContainer.appendChild(button);
-            });
+            return nextLc || (levelCaps.length > 0 ? levelCaps[levelCaps.length - 1] : null); // Wenn alle erreicht, letztes Cap
         }
 
-        // --- Event Listener für Buttons ---
-        document.getElementById('addPlayerBtn').addEventListener('click', async () => {
+        function renderLevelCap() {
+            const display = document.getElementById('levelCapDisplay');
+            const nextLc = getNextLevelCap();
+            
+            if (nextLc) {
+                display.textContent = `Nächstes Level Cap: ${nextLc.max_level} (Angepasst: ${nextLc.adjusted_level})`;
+            } else {
+                display.textContent = 'Alle Level Caps erreicht!';
+            }
+        }
+
+
+        function populateRouteSelects() {
+            // Select2 Initialisierung
+            $('#routeSelect').select2({
+                theme: "bootstrap-5",
+                width: '100%',
+                placeholder: "Route auswählen...",
+                dropdownParent: $('#routeSelect').parent() // Wichtig für Modal-Kompatibilität
+            });
+            routeDropdown = $('#routeSelect').data('select2'); // Speichere die Select2 Instanz
+
+            $('#removeRouteSelect').select2({
+                theme: "bootstrap-5",
+                width: '100%',
+                placeholder: "Route zum Entfernen auswählen...",
+                dropdownParent: $('#removeRouteSelect').parent()
+            });
+            removeRouteDropdown = $('#removeRouteSelect').data('select2'); // Speichere die Select2 Instanz
+
+            // Leere und fülle die Optionen
+            const newRouteOptions = [{ id: '', text: '' }]; // Platzhalter
+            const removeRouteOptions = [{ id: '', text: '' }]; // Platzhalter
+
+            allRouteNames.forEach(name => {
+                if (!routes.some(r => r.name === name)) {
+                    newRouteOptions.push({ id: name, text: name });
+                }
+            });
+            routes.forEach(route => {
+                removeRouteOptions.push({ id: route.id, text: route.name });
+            });
+
+            $('#routeSelect').select2('destroy').empty().select2({
+                theme: "bootstrap-5",
+                width: '100%',
+                placeholder: "Route auswählen...",
+                data: newRouteOptions
+            });
+            routeDropdown = $('#routeSelect').data('select2'); // Re-init Select2 instance
+
+            $('#removeRouteSelect').select2('destroy').empty().select2({
+                theme: "bootstrap-5",
+                width: '100%',
+                placeholder: "Route zum Entfernen auswählen...",
+                data: removeRouteOptions
+            });
+            removeRouteDropdown = $('#removeRouteSelect').data('select2'); // Re-init Select2 instance
+
+            // Setze initiale Werte zurück
+            $('#routeSelect').val(null).trigger('change');
+            $('#removeRouteSelect').val(null).trigger('change');
+        }
+
+
+        // --- API-Aufrufe (Frontend-Logik) ---
+        async function addPlayer() {
             const playerName = document.getElementById('playerNameInput').value.trim();
             if (!playerName) {
-                showMessage('Bitte gib einen Spielernamen ein.', 'info');
+                showMessage('error', 'Bitte geben Sie einen Spielernamen ein.');
                 return;
             }
             try {
@@ -768,26 +915,19 @@ function renderGlobalOrders() {
                     throw new Error(result.error || 'Fehler beim Hinzufügen des Spielers');
                 }
                 document.getElementById('playerNameInput').value = '';
-                showMessage('Spieler hinzugefügt!', 'success');
+                showMessage('success', result.message);
             } catch (error) {
                 console.error('Fehler beim Hinzufügen des Spielers:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
+                showMessage('error', error.message);
             }
-        });
+        }
 
-        document.getElementById('addRouteBtn').addEventListener('click', async () => {
-            const routeName = routeDropdown.getSelectedValue();
+        async function addRoute() {
+            const routeName = $('#routeSelect').val(); // Select2 holt den Wert
             if (!routeName) {
-                showMessage('Bitte wähle eine Route aus der Liste aus.', 'info');
+                showMessage('error', 'Bitte wählen Sie eine Route aus.');
                 return;
             }
-            const isRouteAlreadyAdded = routes.some(r => r.name === routeName);
-            if (isRouteAlreadyAdded) {
-                showMessage(`Die Route "${routeName}" wurde bereits hinzugefügt.`, 'info');
-                routeDropdown.reset();
-                return;
-            }
-
             try {
                 const response = await fetch('/api/add_route', {
                     method: 'POST',
@@ -798,166 +938,115 @@ function renderGlobalOrders() {
                 if (!response.ok) {
                     throw new Error(result.error || 'Fehler beim Hinzufügen der Route');
                 }
-                routeDropdown.reset();
-                showMessage('Route hinzugefügt!', 'success');
-            }
-            catch (error) {
+                $('#routeSelect').val(null).trigger('change'); // Select2 zurücksetzen
+                showMessage('success', result.message);
+            } catch (error) {
                 console.error('Fehler beim Hinzufügen der Route:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
+                showMessage('error', error.message);
             }
-        });
+        }
 
-        // NEUER EVENT LISTENER FÜR "ROUTE ENTFERNEN"
-        document.getElementById('removeRouteBtn').addEventListener('click', async () => {
-            const routeName = removeRouteDropdown.getSelectedValue();
-            if (!routeName) {
-                showMessage('Bitte wähle eine Route zum Entfernen aus der Liste aus.', 'info');
-                return;
+        async function toggleGlobalOrder(orderNumber) {
+            try {
+                const response = await fetch('/api/toggle_global_order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_number: orderNumber })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Umschalten des Ordensstatus');
+                }
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Umschalten des Ordensstatus:', error);
+                showMessage('error', error.message);
             }
-            const routeToRemove = routes.find(r => r.name === routeName);
-            if (!routeToRemove) {
-                showMessage(`Route "${routeName}" nicht gefunden.`, 'error');
-                return;
-            }
+        }
 
-            if (confirm(`Sicher, dass die Route "${routeName}" und ALLE zugehörigen Pokémon-Fänge und Stati gelöscht werden sollen? Diese Aktion kann NICHT rückgängig gemacht werden!`)) {
-                try {
-                    const response = await fetch('/api/clear_route_data', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ route_id: routeToRemove.id })
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        showMessage(`Fehler beim Entfernen der Route: ${errorData.error}`, 'error');
-                    } else {
-                        showMessage(`Route "${routeName}" erfolgreich entfernt!`, 'success');
-                        removeRouteDropdown.reset();
-                    }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Entfernen der Route:', error);
-                    showMessage('Netzwerkfehler beim Entfernen der Route.', 'error');
+        function confirmResetAllData() {
+            if (confirm('Sind Sie sicher, dass Sie ALLE Pokémon-Fänge und Routen-Stati zurücksetzen möchten? Diese Aktion kann nicht rückgängig gemacht werden.')) {
+                resetAllData();
+            }
+        }
+
+        async function resetAllData() {
+            try {
+                const response = await fetch('/api/reset_all_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Zurücksetzen der Daten');
+                }
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Zurücksetzen aller Daten:', error);
+                showMessage('error', error.message);
+            }
+        }
+
+        function confirmClearRouteData(routeId = null) {
+            let idToClear = routeId;
+            if (idToClear === null) {
+                idToClear = $('#removeRouteSelect').val(); // Select2 holt den Wert
+                if (!idToClear) {
+                    showMessage('error', 'Bitte wählen Sie eine Route zum Entfernen aus.');
+                    return;
                 }
             }
-        });
 
+            const routeName = routes.find(r => r.id == idToClear)?.name || 'diese Route';
+            if (confirm(`Sind Sie sicher, dass Sie die Route "${routeName}" und alle zugehörigen Fänge löschen möchten? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+                clearRouteData(idToClear);
+            }
+        }
 
-        document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
-            if (confirm('Sicher, dass ALLE gefangenen Pokémon und ALLE Routen-Stati zurückgesetzt werden sollen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
-                try {
-                    const response = await fetch('/api/reset_all_data', {
-                        method: 'POST'
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        showMessage(`Fehler beim Zurücksetzen aller Daten: ${errorData.error}`, 'error');
-                    } else {
-                        showMessage('Alle Daten erfolgreich zurückgesetzt!', 'success');
-                    }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen aller Daten.', error);
-                    showMessage('Netzwerkfehler beim Zurücksetzen aller Daten.', 'error');
+        async function clearRouteData(routeId) {
+            try {
+                const response = await fetch('/api/clear_route_data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ route_id: routeId })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim Löschen der Route');
                 }
+                $('#removeRouteSelect').val(null).trigger('change'); // Select2 zurücksetzen
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim Löschen der Route:', error);
+                showMessage('error', error.message);
             }
-        });
+        }
 
-        // NEUER EVENT LISTENER FÜR "KURZANSICHT ÖFFNEN"
-        document.getElementById('openSummaryBtn').addEventListener('click', () => {
-            window.open('/summary', '_blank');
-        });
+        function confirmFullDbReset() {
+            if (confirm('WARNUNG: Sind Sie sicher, dass Sie die GESAMTE Datenbank vollständig zurücksetzen möchten? Dies löscht ALLE Spieler, Routen, Fänge und Konfigurationen und kann NICHT rückgängig gemacht werden!')) {
+                fullDbReset();
+            }
+        }
 
-        // NEUER EVENT LISTENER FÜR "DATENBANK VOLLSTÄNDIG ZURÜCKSETZEN"
-        document.getElementById('resetDatabaseBtn').addEventListener('click', async () => {
-            if (confirm('WARNUNG: Dies wird die GESAMTE Datenbank zurücksetzen (Spieler, Routen, Fänge, Orden)! Diese Aktion kann NICHT rückgängig gemacht werden. Sicher?')) {
-                try {
-                    const response = await fetch('/api/full_db_reset', {
-                        method: 'POST'
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        showMessage(`Fehler beim Zurücksetzen der Datenbank: ${errorData.error}`, 'error');
-                    } else {
-                        showMessage('Datenbank vollständig zurückgesetzt! Seite wird neu geladen.', 'success');
-                        setTimeout(() => { location.reload(); }, 1000);
-                    }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen der Datenbank:', error);
-                    showMessage('Netzwerkfehler beim Zurücksetzen der Datenbank.', 'error');
+        async function fullDbReset() {
+            try {
+                const response = await fetch('/api/full_db_reset', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || 'Fehler beim vollständigen Datenbank-Reset');
                 }
+                // SocketIO-Event wird Neuladen der Seite auslösen
+                showMessage('success', result.message);
+            } catch (error) {
+                console.error('Fehler beim vollständigen Datenbank-Reset:', error);
+                showMessage('error', error.message);
             }
-        });
+        }
 
-
-        // --- SocketIO Event Listener (für Echtzeit-Updates) ---
-        socket.on('connect', () => {
-            console.log('Verbunden mit dem Server über SocketIO!');
-            showMessage('Verbunden mit dem Server!', 'success');
-            fetchDataAndRender();
-        });
-
-        socket.on('disconnect', () => {
-            console.log('Verbindung zum Server getrennt.');
-            showMessage('Verbindung zum Server getrennt!', 'error');
-        });
-
-        socket.on('player_added', (data) => {
-            console.log('Neuer Spieler hinzugefügt (SocketIO):', data);
-            fetchDataAndRender();
-        });
-
-        socket.on('route_added', (data) => {
-            console.log('Neue Route hinzugefügt (SocketIO):', data);
-            fetchDataAndRender();
-        });
-
-        socket.on('catch_updated', (data) => {
-            console.log('Fang aktualisiert (SocketIO):', data);
-            const existingCatch = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
-            if (existingCatch) {
-                existingCatch.pokemon_name = data.pokemon_name;
-            } else {
-                catches.push(data);
-            }
-            renderTable();
-        });
-
-        socket.on('global_order_toggled', (data) => {
-            console.log('Globaler Orden-Status aktualisiert (SocketIO):', data);
-            const existingOrderIndex = globalOrders.findIndex(o => o.order_number === data.order_number);
-            if (existingOrderIndex !== -1) {
-                globalOrders[existingOrderIndex].is_obtained = data.is_obtained;
-            } else {
-                globalOrders.push(data);
-            }
-            renderGlobalOrders();
-        });
-
-        socket.on('route_status_updated', (data) => {
-            console.log('Routenstatus aktualisiert (SocketIO):', data);
-            const routeToUpdate = routes.find(r => r.id === data.route_id);
-            if (routeToUpdate) {
-                routeToUpdate.status = data.status_text;
-            }
-            fetchDataAndRender();
-        });
-
-        socket.on('all_data_reset', () => {
-            console.log('Alle Daten zurückgesetzt (SocketIO)!');
-            fetchDataAndRender();
-        });
-
-        socket.on('route_data_cleared', (data) => {
-            console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
-            fetchDataAndRender();
-        });
-
-        socket.on('full_db_reset', () => {
-            console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
-            showMessage('Datenbank vollständig zurückgesetzt von einem anderen Client! Seite wird neu geladen.', 'info');
-            setTimeout(() => { location.reload(); }, 1000);
-        });
-
-        // Config Management Event Listeners
+        // --- Config Management Event Listeners und Funktionen (vorheriger Code) ---
         document.getElementById('loadRoutesJsonBtn').addEventListener('click', () => loadJsonFileContent('routes.json', 'routesJsonContent'));
         document.getElementById('saveRoutesJsonBtn').addEventListener('click', () => saveJsonFileContent('routes.json', 'routesJsonContent'));
         document.getElementById('loadPokemonNamesJsonBtn').addEventListener('click', () => loadJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
@@ -966,7 +1055,6 @@ function renderGlobalOrders() {
         document.getElementById('saveLevelCapsJsonBtn').addEventListener('click', () => saveJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
         document.getElementById('reloadAppConfigsBtn').addEventListener('click', reloadAppConfigs);
 
-        // Helper functions for config management
         async function loadJsonFileContent(filename, textareaId) {
             try {
                 const response = await fetch(`/api/config/${filename}`);
@@ -976,18 +1064,17 @@ function renderGlobalOrders() {
                 }
                 const data = await response.json();
                 document.getElementById(textareaId).value = data.content;
-                showMessage(`Inhalt von ${filename} geladen.`, 'success');
+                showMessage('success', `Inhalt von ${filename} geladen.`);
             } catch (error) {
                 console.error(`Fehler beim Laden von ${filename}:`, error);
-                showMessage(`Fehler beim Laden von ${filename}: ${error.message}`, 'error');
+                showMessage('error', `Fehler beim Laden von ${filename}: ${error.message}`);
             }
         }
 
         async function saveJsonFileContent(filename, textareaId) {
             const content = document.getElementById(textareaId).value;
             try {
-                // Versuche, den Inhalt zu parsen, um eine Validierung vor dem Senden zu haben
-                JSON.parse(content);
+                JSON.parse(content); // Client-seitige JSON-Validierung
 
                 const response = await fetch(`/api/config/${filename}`, {
                     method: 'POST',
@@ -998,36 +1085,224 @@ function renderGlobalOrders() {
                     const errorData = await response.json();
                     throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
-                showMessage(`Inhalt von ${filename} gespeichert.`, 'success');
+                showMessage('success', `Inhalt von ${filename} gespeichert.`);
             } catch (error) {
                 console.error(`Fehler beim Speichern von ${filename}:`, error);
                 if (error instanceof SyntaxError) {
-                    showMessage(`Fehler: Ungültiges JSON-Format in ${filename}. Bitte korrigieren.`, 'error');
+                    showMessage('error', `Fehler: Ungültiges JSON-Format in ${filename}. Bitte korrigieren.`);
                 } else {
-                    showMessage(`Fehler beim Speichern von ${filename}: ${error.message}`, 'error');
+                    showMessage('error', `Fehler beim Speichern von ${filename}: ${error.message}`);
                 }
             }
         }
 
         async function reloadAppConfigs() {
-            if (confirm('Sicher, dass die App-Konfigurationen aus den JSON-Dateien neu geladen werden sollen?')) {
+            if (confirm('Sind Sie sicher, dass die App-Konfigurationen aus den JSON-Dateien neu geladen werden sollen?')) {
                 try {
                     const response = await fetch('/api/reload_configs', {
-                        method: 'POST'
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' } // Muss Content-Type setzen, auch wenn Body leer
                     });
+                    const result = await response.json();
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                        throw new Error(result.error || `HTTP error! status: ${response.status}`);
                     }
-                    showMessage('App-Konfigurationen erfolgreich neu geladen.', 'success');
-                    // Da die Daten neu geladen wurden, wollen wir die Oberfläche aktualisieren
-                    fetchDataAndRender();
+                    showMessage('success', result.message);
+                    // fetchDataAndRender() wird durch SocketIO-Event ausgelöst
                 } catch (error) {
                     console.error('Fehler beim Neuladen der App-Konfigurationen:', error);
-                    showMessage(`Fehler beim Neuladen der App-Konfigurationen: ${error.message}`, 'error');
+                    showMessage('error', `Fehler beim Neuladen der App-Konfigurationen: ${error.message}`);
                 }
             }
         }
+
+        // --- NEUE STRING EXPORT/IMPORT FUNKTIONEN (im Modal) ---
+        async function exportAllDataAsStringModal() {
+            const exportTextArea = document.getElementById('modalExportDataString');
+            exportTextArea.value = 'Exportiere Daten... Bitte warten...';
+            
+            const passwordInput = document.getElementById('modalImportPassword');
+            const password = passwordInput.value; // Passwort für Export
+
+            if (!password) {
+                showMessage('error', 'Bitte geben Sie das Passwort ein, um Daten zu exportieren.');
+                exportTextArea.value = '';
+                return;
+            }
+
+            try {
+                // Sende Passwort mit Export-Anfrage, auch wenn der Server es nicht unbedingt braucht
+                // Dies wird aber für die konsistente Abfrage im Modal verwendet.
+                const response = await fetch('/api/export_all_data_string', {
+                    method: 'GET',
+                    // Keine body oder headers für GET
+                });
+                
+                if (response.status === 403) { // Wenn der Server ein 403 zurückgibt (falsches Passwort)
+                    showMessage('error', 'Passwort für Export ist falsch.');
+                    exportTextArea.value = '';
+                    passwordInput.value = '';
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorResult = await response.json();
+                    throw new Error(errorResult.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                exportTextArea.value = JSON.stringify(data, null, 2); // Schön formatiert
+                showMessage('success', 'Daten erfolgreich als String exportiert.');
+            } catch (error) {
+                console.error('Fehler beim Exportieren der Daten als String:', error);
+                exportTextArea.value = `Fehler beim Export: ${error.message}`;
+                showMessage('error', `Fehler beim Export: ${error.message}`);
+            }
+        }
+
+        function copyModalExportString() {
+            const exportTextArea = document.getElementById('modalExportDataString');
+            exportTextArea.select();
+            exportTextArea.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            showMessage('success', 'Exportierter String in die Zwischenablage kopiert.');
+        }
+
+        function confirmImportDataAsStringModal() {
+            const importString = document.getElementById('modalImportDataString').value.trim();
+            const password = document.getElementById('modalImportPassword').value;
+
+            if (!importString) {
+                showMessage('error', 'Bitte fügen Sie einen Daten-String zum Importieren ein.');
+                return;
+            }
+            if (!password) {
+                showMessage('error', 'Bitte geben Sie das Import-Passwort ein.');
+                return;
+                }
+            
+            if (confirm('WARNUNG: Die Wiederherstellung wird alle bestehenden Daten (Datenbank und JSONs) überschreiben. Diese Aktion kann NICHT rückgängig gemacht werden. Sind Sie sicher?')) {
+                importAllDataAsStringModal(importString, password);
+            }
+        }
+
+        async function importAllDataAsStringModal(importString, password) {
+            try {
+                const response = await fetch('/api/import_all_data_string', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data_string: importString, password: password })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || `HTTP error! status: ${response.status}`);
+                }
+                document.getElementById('modalImportDataString').value = ''; // Textfeld leeren
+                document.getElementById('modalImportPassword').value = ''; // Passwortfeld leeren
+                showMessage('success', result.message);
+                // SocketIO-Event 'import_completed' wird serverseitig ausgelöst und triggert fetchDataAndRender()
+            } catch (error) {
+                console.error('Fehler beim Importieren der Daten aus String:', error);
+                showMessage('error', `Fehler beim Importieren: ${error.message}`);
+            }
+        }
+
+        // --- Socket.IO Events ---
+        socket.on('connect', () => {
+            console.log('Verbunden mit Socket.IO');
+            showMessage('success', 'Verbindung zum Server hergestellt.');
+            fetchDataAndRender(); // Lade Daten, sobald verbunden
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Verbindung zu Socket.IO getrennt');
+            showMessage('error', 'Verbindung zum Server getrennt. Daten werden möglicherweise nicht synchronisiert.');
+        });
+
+        socket.on('player_added', (data) => {
+            console.log('Spieler hinzugefügt:', data);
+            fetchDataAndRender();
+            showMessage('success', `Spieler "${data.name}" hinzugefügt.`);
+        });
+
+        socket.on('route_added', (data) => {
+            console.log('Route hinzugefügt:', data);
+            fetchDataAndRender();
+            showMessage('success', `Route "${data.name}" hinzugefügt.`);
+        });
+
+        socket.on('catch_updated', (data) => {
+            console.log('Fang aktualisiert:', data);
+            // Effizientere lokale Aktualisierung
+            const existingCatch = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
+            if (existingCatch) {
+                existingCatch.pokemon_name = data.pokemon_name;
+            } else {
+                catches.push(data); // Falls ein neuer Eintrag
+            }
+            renderTable();
+            // showMessage('success', `Fang aktualisiert: ${data.pokemon_name} auf Route ${data.route_id}.`);
+        });
+
+        socket.on('global_order_toggled', (data) => {
+            console.log('Globaler Orden-Status umgeschaltet:', data);
+            const order = globalOrders.find(o => o.order_number === data.order_number);
+            if (order) {
+                order.is_obtained = data.is_obtained;
+            }
+            renderGlobalOrders();
+            showMessage('success', `Orden ${data.order_number} Status aktualisiert: ${data.is_obtained ? 'Erhältlich' : 'Nicht erhältlich'}.`);
+        });
+
+        socket.on('route_status_updated', (data) => {
+            console.log('Routenstatus aktualisiert:', data);
+            const route = routes.find(r => r.id === data.route_id);
+            if (route) {
+                route.status = data.status_text;
+            }
+            renderTable();
+            showMessage('success', `Routenstatus für Route ${data.route_id} aktualisiert: ${data.status_text}.`);
+        });
+
+        socket.on('all_data_reset', () => {
+            console.log('Alle Daten zurückgesetzt');
+            fetchDataAndRender();
+            showMessage('success', 'Alle Pokémon-Fänge und Routen-Stati zurückgesetzt.');
+        });
+
+        socket.on('route_deleted', (data) => {
+            console.log('Route gelöscht:', data);
+            fetchDataAndRender();
+            showMessage('success', `Route mit ID ${data.route_id} gelöscht.`);
+        });
+
+        socket.on('full_db_reset', () => {
+            console.log('Vollständiger Datenbank-Reset');
+            fetchDataAndRender();
+            showMessage('success', 'Datenbank vollständig zurückgesetzt. Seite wird neu geladen.');
+            setTimeout(() => { location.reload(); }, 1000);
+        });
+
+        socket.on('config_saved', (data) => {
+            console.log(`Konfigurationsdatei ${data.filename} gespeichert.`);
+            fetchDataAndRender(); // um die UI nach Config-Änderungen zu aktualisieren
+            showMessage('success', `Datei ${data.filename} erfolgreich gespeichert.`);
+        });
+
+        socket.on('configs_reloaded', () => {
+            console.log('App-Konfigurationen neu geladen.');
+            fetchDataAndRender();
+            showMessage('success', 'App-Konfigurationen erfolgreich neu geladen.');
+        });
+
+        socket.on('import_completed', () => {
+            console.log('Import abgeschlossen.');
+            fetchDataAndRender(); // Daten nach Import neu laden
+            showMessage('success', 'Daten erfolgreich aus String wiederhergestellt.');
+        });
+        
+        // Initiales Laden der Daten beim Laden des Dokuments
+        document.addEventListener('DOMContentLoaded', fetchDataAndRender);
 
     </script>
 </body>
