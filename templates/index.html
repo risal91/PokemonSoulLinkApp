@@ -118,6 +118,15 @@
             background-color: #fee2e2;
             color: #b91c1c;
         }
+        textarea.json-editor {
+            width: 100%;
+            min-height: 200px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9em;
+            border: 1px solid #ccc;
+            border-radius: 0.375rem;
+            padding: 10px;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-6">
@@ -190,6 +199,45 @@
                 Aktuelles Level Cap: <span id="currentLevelCapMax" class="text-green-800"></span> (Angepasst: <span id="currentLevelCapAdjusted" class="text-green-800"></span>)
             </div>
         </div>
+
+        <div class="mb-8 p-6 bg-yellow-50 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-yellow-700 mb-4">Konfigurationsverwaltung (JSON-Dateien)</h2>
+            <div class="text-sm text-yellow-800 mb-4 p-3 bg-yellow-100 border border-yellow-200 rounded">
+                Hier können die JSON-Konfigurationsdateien direkt bearbeitet werden. Änderungen an diesen Dateien werden nach dem Speichern und Neuladen der App-Konfiguration wirksam. Beachten Sie, dass Änderungen an den Level Caps erst nach einem "Datenbank vollständig zurücksetzen"-Vorgang in die Datenbank übernommen werden.
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">routes.json</h3>
+                    <textarea id="routesJsonContent" class="json-editor"></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button id="loadRoutesJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
+                        <button id="saveRoutesJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">pokemon_names.json</h3>
+                    <textarea id="pokemonNamesJsonContent" class="json-editor"></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button id="loadPokemonNamesJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
+                        <button id="savePokemonNamesJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-2">level_caps.json</h3>
+                    <textarea id="levelCapsJsonContent" class="json-editor"></textarea>
+                    <div class="flex gap-2 mt-2">
+                        <button id="loadLevelCapsJsonBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md">Laden</button>
+                        <button id="saveLevelCapsJsonBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md">Speichern</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <button id="reloadAppConfigsBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">App-Konfigurationen neu laden</button>
+            </div>
+        </div>
+
+
     </div>
 
     <script>
@@ -197,15 +245,15 @@
         const messageBox = document.getElementById('messageBox');
 
         let players = [];
-        let routes = []; // routes enthält jetzt auch das 'status'-Feld
+        let routes = [];
         let catches = [];
         let globalOrders = [];
         let levelCaps = [];
         let allPokemonNames = [];
         let allRouteNames = [];
 
-        // Hinzugefügte Variable für das "Route entfernen"-Dropdown
-        let removeRouteDropdown;
+        let removeRouteDropdown; // Für das "Route entfernen"-Dropdown
+        let routeDropdown; // Für das "Route hinzufügen"-Dropdown
 
 
         // --- Custom Dropdown Logic ---
@@ -312,9 +360,7 @@
             };
         }
 
-        let routeDropdown; // Für Hinzufügen-Dropdown
-
-        // Funktion zum Erstellen des Pokémon-Dropdowns (unverändert)
+        // Funktion zum Erstellen des Pokémon-Dropdowns
         function createPokemonDropdown(parentElement, initialValue, playerId, routeId) {
             const container = document.createElement('div');
             container.id = `pokemon-dropdown-container-${playerId}-${routeId}`;
@@ -383,7 +429,7 @@
             }
         }
 
-        // Funktion zum Erstellen des Status-Dropdowns für eine Route (in index.html)
+        // Funktion zum Erstellen des Status-Dropdowns für eine Route
         function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
             const statusOptions = [
                 "",
@@ -509,7 +555,6 @@
                 const removeRouteSelectOptions = document.getElementById('removeRouteSelectOptions');
                 const removeRouteSelectOptionsList = removeRouteSelectOptions.querySelector('.options-list');
 
-                // Konvertiere das 'routes'-Array in ein Array von Routennamen für das Dropdown
                 const currentRouteNames = routes.map(r => r.name);
 
                 if (!removeRouteDropdown) {
@@ -519,13 +564,13 @@
                         removeRouteSelectOptions,
                         removeRouteSelectOptionsList,
                         'Route zum Entfernen auswählen...',
-                        currentRouteNames, // Nutze die aktuell vorhandenen Routennamen
+                        currentRouteNames,
                         null,
                         true
                     );
                 } else {
-                    removeRouteDropdown.updateItems(currentRouteNames); // Aktualisiere die Liste
-                    removeRouteDropdown.reset(); // Setzt Auswahl zurück
+                    removeRouteDropdown.updateItems(currentRouteNames);
+                    removeRouteDropdown.reset();
                 }
 
                 renderTable();
@@ -587,10 +632,9 @@
 
                 const actionsCell = document.createElement('td');
                 actionsCell.className = 'py-3 px-4 border-b border-gray-200';
-                // Der Clear Route Button bleibt hier, da er "Fänge und Status zurücksetzen" macht, nicht Route entfernen
                 const clearRouteBtn = document.createElement('button');
                 clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-300 ease-in-out';
-                clearRouteBtn.textContent = 'Clear Route Daten'; // Umbenannt zur Klarheit
+                clearRouteBtn.textContent = 'Clear Route Daten';
                 clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" zurücksetzen`;
                 clearRouteBtn.addEventListener('click', async () => {
                     if (confirm(`Sicher, dass ALLE Pokémon und der Status für Route "${route.name}" zurückgesetzt werden sollen?`)) {
@@ -607,7 +651,7 @@
                                 showMessage(`Daten für Route "${route.name}" zurückgesetzt!`, 'success');
                             }
                         } catch (error) {
-                            console.error('Netzwerkfehler beim Zurücksetzen der Routendaten:', error);
+                            console.error('Netzwerkfehler beim Zurücksetzen der Routendaten.', error);
                             showMessage('Netzwerkfehler beim Zurücksetzen der Routendaten.', 'error');
                         }
                     }
@@ -778,7 +822,7 @@ function renderGlobalOrders() {
 
             if (confirm(`Sicher, dass die Route "${routeName}" und ALLE zugehörigen Pokémon-Fänge und Stati gelöscht werden sollen? Diese Aktion kann NICHT rückgängig gemacht werden!`)) {
                 try {
-                    const response = await fetch('/api/clear_route_data', { // API-Endpunkt ist clear_route_data
+                    const response = await fetch('/api/clear_route_data', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ route_id: routeToRemove.id })
@@ -788,7 +832,7 @@ function renderGlobalOrders() {
                         showMessage(`Fehler beim Entfernen der Route: ${errorData.error}`, 'error');
                     } else {
                         showMessage(`Route "${routeName}" erfolgreich entfernt!`, 'success');
-                        removeRouteDropdown.reset(); // Setzt Auswahl zurück
+                        removeRouteDropdown.reset();
                     }
                 } catch (error) {
                     console.error('Netzwerkfehler beim Entfernen der Route:', error);
@@ -819,7 +863,7 @@ function renderGlobalOrders() {
 
         // NEUER EVENT LISTENER FÜR "KURZANSICHT ÖFFNEN"
         document.getElementById('openSummaryBtn').addEventListener('click', () => {
-            window.open('/summary', '_blank'); // Öffnet /summary in einem neuen Tab
+            window.open('/summary', '_blank');
         });
 
         // NEUER EVENT LISTENER FÜR "DATENBANK VOLLSTÄNDIG ZURÜCKSETZEN"
@@ -834,7 +878,7 @@ function renderGlobalOrders() {
                         showMessage(`Fehler beim Zurücksetzen der Datenbank: ${errorData.error}`, 'error');
                     } else {
                         showMessage('Datenbank vollständig zurückgesetzt! Seite wird neu geladen.', 'success');
-                        setTimeout(() => { location.reload(); }, 1000); // Seite neu laden, um den frischen Zustand zu zeigen
+                        setTimeout(() => { location.reload(); }, 1000);
                     }
                 } catch (error) {
                     console.error('Netzwerkfehler beim Zurücksetzen der Datenbank:', error);
@@ -894,7 +938,7 @@ function renderGlobalOrders() {
             if (routeToUpdate) {
                 routeToUpdate.status = data.status_text;
             }
-            fetchDataAndRender(); // Daten neu laden, um die aktualisierte Route zu sehen
+            fetchDataAndRender();
         });
 
         socket.on('all_data_reset', () => {
@@ -903,10 +947,8 @@ function renderGlobalOrders() {
         });
 
         socket.on('route_data_cleared', (data) => {
-            // Dieses Event wird jetzt vom clear_route_data API-Endpunkt gesendet
-            // obwohl der Endpunkt die Route löscht, nicht nur die Daten leert.
             console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
-            fetchDataAndRender(); // Seite neu laden, um die gelöschte Route zu entfernen
+            fetchDataAndRender();
         });
 
         socket.on('full_db_reset', () => {
@@ -914,6 +956,78 @@ function renderGlobalOrders() {
             showMessage('Datenbank vollständig zurückgesetzt von einem anderen Client! Seite wird neu geladen.', 'info');
             setTimeout(() => { location.reload(); }, 1000);
         });
+
+        // Config Management Event Listeners
+        document.getElementById('loadRoutesJsonBtn').addEventListener('click', () => loadJsonFileContent('routes.json', 'routesJsonContent'));
+        document.getElementById('saveRoutesJsonBtn').addEventListener('click', () => saveJsonFileContent('routes.json', 'routesJsonContent'));
+        document.getElementById('loadPokemonNamesJsonBtn').addEventListener('click', () => loadJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
+        document.getElementById('savePokemonNamesJsonBtn').addEventListener('click', () => saveJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
+        document.getElementById('loadLevelCapsJsonBtn').addEventListener('click', () => loadJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
+        document.getElementById('saveLevelCapsJsonBtn').addEventListener('click', () => saveJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
+        document.getElementById('reloadAppConfigsBtn').addEventListener('click', reloadAppConfigs);
+
+        // Helper functions for config management
+        async function loadJsonFileContent(filename, textareaId) {
+            try {
+                const response = await fetch(`/api/config/${filename}`);
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                document.getElementById(textareaId).value = data.content;
+                showMessage(`Inhalt von ${filename} geladen.`, 'success');
+            } catch (error) {
+                console.error(`Fehler beim Laden von ${filename}:`, error);
+                showMessage(`Fehler beim Laden von ${filename}: ${error.message}`, 'error');
+            }
+        }
+
+        async function saveJsonFileContent(filename, textareaId) {
+            const content = document.getElementById(textareaId).value;
+            try {
+                // Versuche, den Inhalt zu parsen, um eine Validierung vor dem Senden zu haben
+                JSON.parse(content);
+
+                const response = await fetch(`/api/config/${filename}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+                showMessage(`Inhalt von ${filename} gespeichert.`, 'success');
+            } catch (error) {
+                console.error(`Fehler beim Speichern von ${filename}:`, error);
+                if (error instanceof SyntaxError) {
+                    showMessage(`Fehler: Ungültiges JSON-Format in ${filename}. Bitte korrigieren.`, 'error');
+                } else {
+                    showMessage(`Fehler beim Speichern von ${filename}: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        async function reloadAppConfigs() {
+            if (confirm('Sicher, dass die App-Konfigurationen aus den JSON-Dateien neu geladen werden sollen?')) {
+                try {
+                    const response = await fetch('/api/reload_configs', {
+                        method: 'POST'
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                    }
+                    showMessage('App-Konfigurationen erfolgreich neu geladen.', 'success');
+                    // Da die Daten neu geladen wurden, wollen wir die Oberfläche aktualisieren
+                    fetchDataAndRender();
+                } catch (error) {
+                    console.error('Fehler beim Neuladen der App-Konfigurationen:', error);
+                    showMessage(`Fehler beim Neuladen der App-Konfigurationen: ${error.message}`, 'error');
+                }
+            }
+        }
 
     </script>
 </body>
