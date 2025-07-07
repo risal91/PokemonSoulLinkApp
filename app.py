@@ -11,10 +11,20 @@ import os
 import threading
 import time
 import socket
+import shutil # NEU: Import für Dateioperationen
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION'  # Wichtig: In Produktion ändern!
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')  # async_mode auf 'gevent' setzen
+
+# NEU: Verzeichnis für Spielstände definieren und erstellen
+SAVES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saves')
+if not os.path.exists(SAVES_DIR):
+    os.makedirs(SAVES_DIR)
+
+# NEU: Pfad zur Haupt-Datenbankdatei
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'database.db')
+
 
 # --- Globale Config-Verwaltung ---
 # Verwenden wir ein Dictionary, das wir neu laden können
@@ -110,6 +120,15 @@ def get_all_data():
     ]
 
     session.close()
+
+    # NEU: Liste der gespeicherten Datenbanken holen
+    saved_dbs = []
+    try:
+        # Liste alle .db Dateien im saves-Verzeichnis auf
+        saved_dbs = [f for f in os.listdir(SAVES_DIR) if f.endswith('.db')]
+    except Exception as e:
+        print(f"Fehler beim Lesen des Save-Verzeichnisses: {e}")
+
     return jsonify({
         'players': players_data,
         'routes': routes_data,
@@ -118,6 +137,7 @@ def get_all_data():
         'level_caps': level_caps_data,
         'all_pokemon_names': _app_config_data["ALL_POKEMON_NAMES"],  # Greife auf die neu ladbare Config zu
         'all_route_names': _app_config_data["ALL_ROUTES"],  # Greife auf die neu ladbare Config zu
+        'saved_databases': saved_dbs, # NEU: Füge die Liste zur Antwort hinzu
     })
 
 
@@ -353,6 +373,59 @@ def reorder_routes():
     finally:
         session.close()
 
+# NEU: API-Endpunkt zum Speichern des aktuellen DB-Status
+@app.route('/api/database/save', methods=['POST'])
+def save_database_state():
+    data = request.json
+    save_name = data.get('name')
+
+    if not save_name:
+        return jsonify({'error': 'Name für den Spielstand fehlt.'}), 400
+
+    # Bereinige den Dateinamen
+    safe_filename = "".join([c for c in save_name if c.isalpha() or c.isdigit() or c in ' ._-']).rstrip()
+    if not safe_filename:
+        return jsonify({'error': 'Ungültiger Name für den Spielstand.'}), 400
+
+    dest_path = os.path.join(SAVES_DIR, f"{safe_filename}.db")
+
+    if os.path.exists(dest_path):
+        return jsonify({'error': 'Ein Spielstand mit diesem Namen existiert bereits.'}), 409
+
+    try:
+        shutil.copy(DB_PATH, dest_path)
+        socketio.emit('database_saved') # Informiere alle Clients
+        return jsonify({'message': f'Spielstand "{safe_filename}" erfolgreich gespeichert.'}), 200
+    except Exception as e:
+        print(f"Fehler beim Speichern der Datenbank: {e}")
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
+
+# NEU: API-Endpunkt zum Laden eines DB-Status
+@app.route('/api/database/load', methods=['POST'])
+def load_database_state():
+    data = request.json
+    filename = data.get('filename')
+
+    if not filename:
+        return jsonify({'error': 'Dateiname zum Laden fehlt.'}), 400
+
+    source_path = os.path.join(SAVES_DIR, filename)
+
+    if not os.path.exists(source_path):
+        return jsonify({'error': 'Der gewählte Spielstand existiert nicht.'}), 404
+
+    try:
+        # Wichtig: Überschreibe die aktuelle Datenbank mit dem Spielstand
+        shutil.copy(source_path, DB_PATH)
+        
+        # Sende das gleiche Event wie beim vollständigen Reset,
+        # da dies ein Neuladen der Seite bei allen Clients auslöst.
+        socketio.emit('full_db_reset') 
+        
+        return jsonify({'message': f'Spielstand "{filename}" erfolgreich geladen. Die App wird neu gestartet.'}), 200
+    except Exception as e:
+        print(f"Fehler beim Laden der Datenbank: {e}")
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
 
 @app.route('/api/full_db_reset', methods=['POST'])
 def full_db_reset():
