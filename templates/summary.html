@@ -27,11 +27,16 @@
         /* CSS-KLASSEN FÜR ROUTEN-STATUS */
         .route-status-orange {
             background-color: #ffedd5 !important;
-            color: #c2410c !important;
         }
+        .route-status-orange td { /* Stelle sicher, dass die Farbe auch in den Zellen ist */
+             background-color: #ffedd5 !important;
+        }
+
         .route-status-red {
             background-color: #fee2e2 !important;
-            color: #b91c1c !important;
+        }
+        .route-status-red td {
+             background-color: #fee2e2 !important;
         }
 
         /* Custom Dropdown Styles */
@@ -242,57 +247,52 @@
         }
         
         function renderSummaryTable() {
-            summaryTableContainer.innerHTML = ''; // Container leeren
+            summaryTableContainer.innerHTML = '';
             const table = document.createElement('table');
-            table.className = 'min-w-full bg-white border border-gray-300';
+            table.className = 'min-w-full bg-white border-collapse';
 
-            // Tabellenkopf erstellen
             const thead = table.createTHead();
             thead.className = 'bg-blue-100';
             const headerRow = thead.insertRow();
             const headers = ['Route', ...players.map(p => p.name), 'Status'];
             headers.forEach(text => {
                 const th = document.createElement('th');
-                th.className = 'py-2 px-3 border-b-2 border-r border-gray-300 text-left text-sm font-semibold text-gray-700 uppercase';
+                th.className = 'py-2 px-3 border-b-2 border-x border-gray-300 text-left text-sm font-semibold text-gray-700 uppercase';
                 th.textContent = text;
                 headerRow.appendChild(th);
             });
-            headerRow.lastChild.classList.remove('border-r'); // Letzte Spalte ohne rechten Rand
-
-            // Tabellenkörper erstellen
+            
             const tbody = table.createTBody();
             routes.forEach(route => {
                 const row = tbody.insertRow();
-                row.id = `summary-route-row-${route.id}`; // Eindeutige ID für die Zeile
+                row.id = `summary-route-row-${route.id}`;
+                updateRouteRowColor(row, route.status); // GEÄNDERT: Übergibt die ganze Zeile an die Farb-Funktion
 
-                // Routen-Zelle
                 const routeCell = row.insertCell();
-                routeCell.className = 'py-2 px-3 border-b border-r border-gray-300 font-medium';
+                routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 font-medium';
                 routeCell.textContent = route.name;
-                updateRouteRowColor(routeCell, route.status);
 
-                // Spieler-Zellen
                 players.forEach(player => {
                     const playerCell = row.insertCell();
-                    playerCell.className = 'py-1 px-2 border-b border-r border-gray-300';
+                    playerCell.className = 'py-1 px-2 border-b border-x border-gray-300';
                     const catchedPoke = catches.find(c => c.player_id === player.id && c.route_id === route.id);
                     createPokemonDropdownSummary(playerCell, catchedPoke ? catchedPoke.pokemon_name : null, player.id, route.id);
                 });
 
-                // Status-Zelle
                 const statusCell = row.insertCell();
-                statusCell.className = 'py-1 px-2 border-b border-gray-300';
+                statusCell.className = 'py-1 px-2 border-b border-x border-gray-300';
                 createStatusDropdownSummary(statusCell, route.status, route.id);
             });
             summaryTableContainer.appendChild(table);
         }
 
-        function updateRouteRowColor(cell, status) {
-            cell.classList.remove('route-status-orange', 'route-status-red');
+        // GEÄNDERT: Nimmt jetzt die ganze Zeile (row) statt nur einer Zelle (cell)
+        function updateRouteRowColor(row, status) {
+            row.classList.remove('route-status-orange', 'route-status-red');
             if (status === "Death Link" || status === "No Catch") {
-                cell.classList.add('route-status-orange');
+                row.classList.add('route-status-orange');
             } else if (status && status.startsWith("Death (")) {
-                cell.classList.add('route-status-red');
+                row.classList.add('route-status-red');
             }
         }
 
@@ -301,7 +301,7 @@
             let lastObtainedOrder = globalOrders.filter(go => go.is_obtained).sort((a,b) => b.order_number - a.order_number)[0];
             let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
              if (!nextLevelCap && levelCaps.length > 0) {
-                 nextLevelCap = levelCaps[levelCaps.length - 1]; // Wenn alle erledigt, zeige das letzte Cap
+                 nextLevelCap = levelCaps[levelCaps.length - 1];
              }
 
             if (nextLevelCap) {
@@ -317,12 +317,10 @@
         socket.on('connect', () => { console.log('Verbunden (Kurzansicht)'); fetchDataAndRenderSummary(); });
         socket.on('disconnect', () => console.log('Verbindung getrennt (Kurzansicht)'));
 
-        // Events, die ein komplettes Neuladen erfordern
         ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'global_order_toggled'].forEach(event => {
             socket.on(event, fetchDataAndRenderSummary);
         });
         
-        // Granulare Updates
         socket.on('catch_updated', (data) => {
             console.log('Granulares Fang-Update:', data);
             let catchEntry = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
@@ -335,10 +333,13 @@
             console.log('Granulares Status-Update:', data);
             let routeEntry = routes.find(r => r.id === data.route_id);
             if(routeEntry) routeEntry.status = data.status_text;
+            
             const statusInputElement = document.getElementById(`status-dropdown-summary-input-${data.route_id}`);
             if (statusInputElement) statusInputElement.textContent = data.status_text || 'Status';
-            const routeCell = document.querySelector(`#summary-route-row-${data.route_id} td:first-child`);
-            if(routeCell) updateRouteRowColor(routeCell, data.status_text);
+            
+            // GEÄNDERT: Wählt die ganze Zeile (<tr>) aus, um die Farbe zu ändern, nicht nur die erste Zelle
+            const routeRow = document.querySelector(`#summary-route-row-${data.route_id}`);
+            if(routeRow) updateRouteRowColor(routeRow, data.status_text);
         });
 
     </script>
