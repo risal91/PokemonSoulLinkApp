@@ -6,6 +6,7 @@
     <title>Pokémon Soul Link Challenge</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body {
@@ -127,6 +128,17 @@
             border-radius: 0.375rem;
             padding: 10px;
         }
+        /* Style für Drag & Drop */
+        .sortable-ghost {
+            background: #c8ebfb;
+            opacity: 0.5;
+        }
+        .sortable-chosen {
+            cursor: grabbing;
+        }
+        #catchTableBody tr {
+            cursor: grab;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-6">
@@ -173,6 +185,7 @@
 
         <div class="overflow-x-auto mb-8 bg-white rounded-lg shadow-md p-6 pb-40">
             <h2 class="text-2xl font-semibold text-blue-700 mb-4">Pokémon-Fänge Übersicht</h2>
+            <p class="text-sm text-gray-600 mb-4">Du kannst die Routen per Drag & Drop verschieben, um ihre Reihenfolge zu ändern.</p>
 
             <div class="text-center mb-6">
                 <button id="resetAllDataBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-md shadow-lg transition duration-300 ease-in-out">Alle Fänge & Routen-Status zurücksetzen</button>
@@ -601,6 +614,7 @@
             routes.forEach(route => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
+                row.dataset.routeId = route.id; // Wichtig für Drag & Drop
 
                 const routeNameCell = document.createElement('td');
                 routeNameCell.className = 'py-3 px-4 border-b border-gray-200 font-medium text-gray-800';
@@ -749,6 +763,44 @@ function renderGlobalOrders() {
                 ordersContainer.appendChild(button);
             });
         }
+        
+        // NEU: Drag & Drop Initialisierung
+        let sortable = null;
+        function initDragAndDrop() {
+            const tableBody = document.getElementById('catchTableBody');
+            if (sortable) {
+                sortable.destroy();
+            }
+            sortable = new Sortable(tableBody, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: async function (evt) {
+                    const rows = Array.from(tableBody.querySelectorAll('tr'));
+                    const orderedIds = rows.map(row => row.dataset.routeId);
+
+                    try {
+                        const response = await fetch('/api/reorder_routes', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ordered_ids: orderedIds })
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            showMessage(`Fehler beim Speichern der Reihenfolge: ${errorData.error}`, 'error');
+                            // Optional: Reihenfolge im UI zurücksetzen
+                            fetchDataAndRender();
+                        } else {
+                            showMessage('Routen-Reihenfolge gespeichert!', 'success');
+                        }
+                    } catch (error) {
+                        console.error('Netzwerkfehler beim Speichern der Reihenfolge:', error);
+                        showMessage('Netzwerkfehler beim Speichern der Reihenfolge.', 'error');
+                    }
+                }
+            });
+        }
+
 
         // --- Event Listener für Buttons ---
         document.getElementById('addPlayerBtn').addEventListener('click', async () => {
@@ -892,7 +944,7 @@ function renderGlobalOrders() {
         socket.on('connect', () => {
             console.log('Verbunden mit dem Server über SocketIO!');
             showMessage('Verbunden mit dem Server!', 'success');
-            fetchDataAndRender();
+            fetchDataAndRender().then(initDragAndDrop);
         });
 
         socket.on('disconnect', () => {
@@ -902,12 +954,12 @@ function renderGlobalOrders() {
 
         socket.on('player_added', (data) => {
             console.log('Neuer Spieler hinzugefügt (SocketIO):', data);
-            fetchDataAndRender();
+            fetchDataAndRender().then(initDragAndDrop);
         });
 
         socket.on('route_added', (data) => {
             console.log('Neue Route hinzugefügt (SocketIO):', data);
-            fetchDataAndRender();
+            fetchDataAndRender().then(initDragAndDrop);
         });
 
         socket.on('catch_updated', (data) => {
@@ -919,6 +971,7 @@ function renderGlobalOrders() {
                 catches.push(data);
             }
             renderTable();
+            initDragAndDrop();
         });
 
         socket.on('global_order_toggled', (data) => {
@@ -938,17 +991,23 @@ function renderGlobalOrders() {
             if (routeToUpdate) {
                 routeToUpdate.status = data.status_text;
             }
-            fetchDataAndRender();
+            fetchDataAndRender().then(initDragAndDrop);
+        });
+        
+        // NEU: Event für Routen-Sortierung
+        socket.on('routes_reordered', (data) => {
+             console.log('Routen-Reihenfolge aktualisiert (SocketIO):', data);
+             fetchDataAndRender().then(initDragAndDrop);
         });
 
         socket.on('all_data_reset', () => {
             console.log('Alle Daten zurückgesetzt (SocketIO)!');
-            fetchDataAndRender();
+            fetchDataAndRender().then(initDragAndDrop);
         });
 
-        socket.on('route_data_cleared', (data) => {
-            console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
-            fetchDataAndRender();
+        socket.on('route_deleted', (data) => {
+            console.log(`Route ${data.route_id} entfernt (SocketIO)!`);
+            fetchDataAndRender().then(initDragAndDrop);
         });
 
         socket.on('full_db_reset', () => {
@@ -1021,7 +1080,7 @@ function renderGlobalOrders() {
                     }
                     showMessage('App-Konfigurationen erfolgreich neu geladen.', 'success');
                     // Da die Daten neu geladen wurden, wollen wir die Oberfläche aktualisieren
-                    fetchDataAndRender();
+                    fetchDataAndRender().then(initDragAndDrop);
                 } catch (error) {
                     console.error('Fehler beim Neuladen der App-Konfigurationen:', error);
                     showMessage(`Fehler beim Neuladen der App-Konfigurationen: ${error.message}`, 'error');

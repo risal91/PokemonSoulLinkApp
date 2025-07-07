@@ -86,15 +86,15 @@ def summary():
 @app.route('/api/data')
 def get_all_data():
     session = get_db_session()
-    # Wichtig: Routen nach ID sortieren, um die Einfügereihenfolge zu behalten
-    routes = session.query(Route).order_by(Route.id).all()
+    # Wichtig: Routen nach der neuen `order`-Spalte sortieren
+    routes = session.query(Route).order_by(Route.order).all()
     players = session.query(Player).all()
     catches = session.query(PokemonCatch).all()
     global_orders = session.query(GlobalOrder).all()
     level_caps = session.query(LevelCap).all()
 
     players_data = [{'id': p.id, 'name': p.name} for p in players]
-    routes_data = [{'id': r.id, 'name': r.name, 'status': r.status} for r in routes]
+    routes_data = [{'id': r.id, 'name': r.name, 'status': r.status, 'order': r.order} for r in routes]
     catches_data = [
         {'player_id': c.player_id, 'route_id': c.route_id, 'pokemon_name': c.pokemon_name}
         for c in catches
@@ -167,7 +167,9 @@ def add_route():
         if existing_route:
             return jsonify({'error': 'Route existiert bereits'}), 409
 
-        new_route = Route(name=route_name, status="")
+        # Setze die Reihenfolge auf die aktuelle Anzahl der Routen
+        current_route_count = session.query(Route).count()
+        new_route = Route(name=route_name, status="", order=current_route_count)
         session.add(new_route)
         session.commit()
 
@@ -176,9 +178,9 @@ def add_route():
             session.add(PokemonCatch(player_id=player.id, route_id=new_route.id, pokemon_name=None))
         session.commit()
 
-        socketio.emit('route_added', {'id': new_route.id, 'name': new_route.name, 'status': new_route.status})
+        socketio.emit('route_added', {'id': new_route.id, 'name': new_route.name, 'status': new_route.status, 'order': new_route.order})
         return jsonify({'message': 'Route hinzugefügt',
-                        'route': {'id': new_route.id, 'name': new_route.name, 'status': new_route.status}}), 201
+                        'route': {'id': new_route.id, 'name': new_route.name, 'status': new_route.status, 'order': new_route.order}}), 201
     except Exception as e:
         session.rollback()
         print(f"Fehler beim Hinzufügen der Route: {e}")
@@ -322,6 +324,31 @@ def clear_route_data():
     except Exception as e:
         session.rollback()
         print(f"Fehler beim Löschen der Route: {e}")
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
+    finally:
+        session.close()
+
+# NEUER ENDPUNKT FÜR DRAG & DROP
+@app.route('/api/reorder_routes', methods=['POST'])
+def reorder_routes():
+    data = request.json
+    ordered_route_ids = data.get('ordered_ids')
+
+    if not ordered_route_ids:
+        return jsonify({'error': 'Keine Routen-IDs übermittelt'}), 400
+
+    session = get_db_session()
+    try:
+        for index, route_id in enumerate(ordered_route_ids):
+            route = session.query(Route).filter_by(id=route_id).first()
+            if route:
+                route.order = index
+        session.commit()
+        socketio.emit('routes_reordered', {'ordered_ids': ordered_route_ids})
+        return jsonify({'message': 'Routen-Reihenfolge aktualisiert'}), 200
+    except Exception as e:
+        session.rollback()
+        print(f"Fehler beim Neusortieren der Routen: {e}")
         return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
     finally:
         session.close()

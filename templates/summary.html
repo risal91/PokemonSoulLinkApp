@@ -17,7 +17,7 @@
             transform-origin: top center; /* Skaliert von oben/Mitte */
         }
         .container {
-            max-width: 900px;
+            max-width: 1400px; /* Breiter für das neue Layout */
         }
         .player-section {
             background-color: #ffffff;
@@ -57,12 +57,12 @@
         }
         /* CSS-KLASSEN FÜR ROUTEN-STATUS (in Summary) */
         .route-status-orange {
-            background-color: #ffedd5;
-            color: #c2410c;
+            background-color: #ffedd5 !important;
+            color: #c2410c !important;
         }
         .route-status-red {
-            background-color: #fee2e2;
-            color: #b91c1c;
+            background-color: #fee2e2 !important;
+            color: #b91c1c !important;
         }
 
         /* Custom Dropdown Styles (angepasst für Summary) */
@@ -123,6 +123,14 @@
             background-color: #e0e7ff;
             font-weight: bold;
         }
+        .custom-select-search {
+            width: calc(100% - 1rem);
+            padding: 0.4rem;
+            margin: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 0.25rem;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body class="bg-gray-100 p-6">
@@ -140,9 +148,28 @@
             <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold text-green-700 p-4 mb-8 bg-green-100 rounded-md shadow-inner hidden level-cap-display-summary">
                 Nächstes Level Cap: <span id="summaryCurrentLevelCapMax" class="text-green-800"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted" class="text-green-800"></span>)
             </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div id="playerSummaryContainer" class="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    </div>
 
-            <div id="playerSummaryContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <div id="statusTableContainer" class="lg:col-span-1">
+                    <h3 class="text-2xl font-bold text-center text-blue-700 mb-4">Routen-Status</h3>
+                    <div class="bg-white rounded-lg shadow-md p-4">
+                        <table class="w-full">
+                            <thead class="bg-blue-50">
+                                <tr>
+                                    <th class="py-2 px-3 text-left font-semibold text-gray-600">Route</th>
+                                    <th class="py-2 px-3 text-left font-semibold text-gray-600">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statusTableBody">
+                                </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
+
             <div id="noDataMessage" class="hidden text-center text-gray-500 mt-10">
                 Lade Daten... Wenn dies zu lange dauert, sind möglicherweise keine Spieler oder Routen vorhanden, oder der Server ist nicht erreichbar.
             </div>
@@ -163,6 +190,7 @@
 
 
         const playerSummaryContainer = document.getElementById('playerSummaryContainer');
+        const statusTableBody = document.getElementById('statusTableBody');
         const noDataMessage = document.getElementById('noDataMessage');
         const summaryLevelCapDisplay = document.getElementById('summaryLevelCapDisplay');
         const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
@@ -260,27 +288,32 @@
                 searchInput.addEventListener('input', (e) => {
                     renderOptions(e.target.value);
                 });
+                searchInput.addEventListener('click', (e) => e.stopPropagation()); // Verhindert Schließen beim Klick auf Suche
             }
+
 
             document.addEventListener('click', (e) => {
                 if (!container.contains(e.target)) {
                     optionsDiv.classList.remove('active');
                 }
-                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
-                    if (!openDiv.closest('.custom-select-container').contains(e.target)) {
-                        openDiv.classList.remove('active');
-                    }
-                });
             });
 
             input.textContent = searchPlaceholder;
             renderOptions();
-            return {
+            
+            const instance = {
                 getSelectedValue: () => selectedValue,
                 setSelectedValue: (value) => {
                     selectedValue = value;
                     input.textContent = value || searchPlaceholder;
-                    renderOptions();
+                    const allOptions = optionsList.querySelectorAll('.custom-select-option');
+                    allOptions.forEach(opt => {
+                        if (opt.dataset.value === value) {
+                            opt.classList.add('selected');
+                        } else {
+                            opt.classList.remove('selected');
+                        }
+                    });
                 },
                 reset: () => {
                     selectedValue = null;
@@ -291,8 +324,11 @@
                 updateItems: (newItems) => {
                     currentItems = newItems;
                     renderOptions(searchInput ? searchInput.value : '');
-                }
+                },
+                getInput: () => input // Gibt das Input-Element zurück
             };
+            
+            return instance;
         }
 
         // Funktion für Pokémon-Dropdown in Summary
@@ -446,8 +482,7 @@
                 allPokemonNames = data.all_pokemon_names || [];
 
 
-                renderPlayerSummaries();
-                renderSummaryLevelCap();
+                renderAll(); // Eine Funktion, die alles rendert
 
                 if (players.length > 0 || routes.length > 0) {
                     noDataMessage.classList.add('hidden');
@@ -456,11 +491,18 @@
                     noDataMessage.classList.remove('hidden');
                 }
 
-            } catch (error) {
+            } catch (error)
+            {
                 console.error('Fehler beim Abrufen der Daten für Kurzansicht:', error);
                 noDataMessage.textContent = 'Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.';
                 noDataMessage.classList.remove('hidden');
             }
+        }
+        
+        function renderAll() {
+            renderPlayerSummaries();
+            renderStatusTable();
+            renderSummaryLevelCap();
         }
 
         function renderPlayerSummaries() {
@@ -474,7 +516,8 @@
 
             sortedPlayers.forEach(player => {
                 const playerSection = document.createElement('div');
-                playerSection.className = 'player-section p-0';
+                playerSection.className = 'player-section';
+                playerSection.id = `player-section-${player.id}`;
 
                 const playerNameHeader = document.createElement('h3');
                 playerNameHeader.className = 'text-xl text-blue-700 mb-2 font-bold';
@@ -485,24 +528,13 @@
                 playerRoutesDiv.className = 'player-routes';
                 playerSection.appendChild(playerRoutesDiv);
 
-                // Hier die Sortierung entfernen, um die Hinzufügungsreihenfolge zu behalten
-                const displayedRoutes = [...routes]; // routes kommt schon nach ID sortiert vom Backend
-
-                displayedRoutes.forEach(route => {
+                routes.forEach(route => {
                     const routeItem = document.createElement('div');
-                    routeItem.className = 'route-item grid grid-cols-[1fr_1fr_min-content] gap-2 items-center';
+                    routeItem.className = 'route-item grid grid-cols-[1fr_1fr] gap-4 items-center';
 
                     const routeNameSpan = document.createElement('span');
                     routeNameSpan.className = 'route-name text-gray-700';
                     routeNameSpan.textContent = route.name + ':';
-
-                    routeNameSpan.classList.remove('route-status-orange', 'route-status-red');
-                    if (route.status === "Death Link" || route.status === "No Catch") {
-                        routeNameSpan.classList.add('route-status-orange');
-                    } else if (route.status.startsWith("Death (")) {
-                        routeNameSpan.classList.add('route-status-red');
-                    }
-
                     routeItem.appendChild(routeNameSpan);
 
                     const pokemonDropdownContainer = document.createElement('div');
@@ -512,15 +544,38 @@
                     createPokemonDropdownSummary(pokemonDropdownContainer, pokemonName, player.id, route.id);
                     routeItem.appendChild(pokemonDropdownContainer);
 
-                    const statusDropdownContainer = document.createElement('div');
-                    statusDropdownContainer.className = 'status-dropdown-summary';
-                    createStatusDropdownSummary(statusDropdownContainer, route.status, route.id);
-                    routeItem.appendChild(statusDropdownContainer);
-
-
                     playerRoutesDiv.appendChild(routeItem);
                 });
                 playerSummaryContainer.appendChild(playerSection);
+            });
+        }
+        
+        function renderStatusTable() {
+            statusTableBody.innerHTML = '';
+            routes.forEach(route => {
+                const row = document.createElement('tr');
+                row.id = `status-row-${route.id}`;
+
+                const routeNameCell = document.createElement('td');
+                routeNameCell.className = 'py-2 px-3 border-b border-gray-200 font-medium';
+                routeNameCell.textContent = route.name;
+                
+                // Farb-Logik anwenden
+                routeNameCell.classList.remove('route-status-orange', 'route-status-red');
+                if (route.status === "Death Link" || route.status === "No Catch") {
+                    routeNameCell.classList.add('route-status-orange');
+                } else if (route.status.startsWith("Death (")) {
+                    routeNameCell.classList.add('route-status-red');
+                }
+                
+                row.appendChild(routeNameCell);
+
+                const statusDropdownCell = document.createElement('td');
+                statusDropdownCell.className = 'py-2 px-3 border-b border-gray-200';
+                createStatusDropdownSummary(statusDropdownCell, route.status, route.id);
+                row.appendChild(statusDropdownCell);
+                
+                statusTableBody.appendChild(row);
             });
         }
 
@@ -553,7 +608,7 @@
             }
         }
 
-        // --- SocketIO Event Listener (für Echtzeit-Updates) ---
+        // --- SocketIO Event Listener (für granulare Echtzeit-Updates) ---
         socket.on('connect', () => {
             console.log('Verbunden mit dem Server über SocketIO (Kurzansicht)!');
             fetchDataAndRenderSummary();
@@ -563,33 +618,56 @@
             console.log('Verbindung zum Server getrennt (Kurzansicht).');
         });
 
-        socket.on('player_added', () => {
-            fetchDataAndRenderSummary();
+        socket.on('player_added', fetchDataAndRenderSummary);
+        socket.on('route_added', fetchDataAndRenderSummary);
+        socket.on('route_deleted', fetchDataAndRenderSummary);
+        socket.on('routes_reordered', fetchDataAndRenderSummary);
+        socket.on('global_order_toggled', fetchDataAndRenderSummary);
+        socket.on('all_data_reset', fetchDataAndRenderSummary);
+        socket.on('full_db_reset', fetchDataAndRenderSummary);
+
+
+        socket.on('catch_updated', (data) => {
+            console.log('Granulares Update für Fang:', data);
+            // Aktualisiere das Model
+            let catchEntry = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
+            if(catchEntry) {
+                catchEntry.pokemon_name = data.pokemon_name;
+            } else {
+                catches.push(data);
+            }
+            
+            // Aktualisiere nur das betroffene Dropdown
+            const inputElement = document.getElementById(`pokemon-input-summary-${data.player_id}-${data.route_id}`);
+            if (inputElement) {
+                inputElement.textContent = data.pokemon_name || 'Pokémon eintragen';
+            }
         });
-        socket.on('route_added', () => {
-            fetchDataAndRenderSummary();
-        });
-        socket.on('catch_updated', () => {
-            fetchDataAndRenderSummary();
-        });
-        socket.on('global_order_toggled', () => {
-            fetchDataAndRenderSummary();
-        });
-        socket.on('route_status_updated', () => {
-            fetchDataAndRenderSummary();
-        });
-        socket.on('all_data_reset', () => {
-            console.log('Alle Daten zurückgesetzt (SocketIO)!');
-            fetchDataAndRenderSummary();
-        });
-        socket.on('route_data_cleared', (data) => {
-            console.log(`Daten für Route ${data.route_id} zurückgesetzt (SocketIO)!`);
-            fetchDataAndRenderSummary();
-        });
-        socket.on('full_db_reset', () => {
-            console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
-            // Hier keine setTimeout(location.reload) da das der Hauptansicht vorbehalten ist
-            fetchDataAndRenderSummary();
+        
+        socket.on('route_status_updated', (data) => {
+            console.log('Granulares Update für Routen-Status:', data);
+            // Aktualisiere das Model
+            let routeEntry = routes.find(r => r.id === data.route_id);
+            if(routeEntry) {
+                routeEntry.status = data.status_text;
+            }
+
+            // Aktualisiere das Dropdown in der Status-Tabelle
+            const statusInputElement = document.getElementById(`status-dropdown-summary-input-${data.route_id}`);
+            if (statusInputElement) {
+                statusInputElement.textContent = data.status_text || 'Status';
+            }
+            
+            // Aktualisiere die Farbe der Routen-Zelle
+            const routeNameCell = document.querySelector(`#status-row-${data.route_id} td:first-child`);
+            if(routeNameCell) {
+                routeNameCell.classList.remove('route-status-orange', 'route-status-red');
+                if (data.status_text === "Death Link" || data.status_text === "No Catch") {
+                    routeNameCell.classList.add('route-status-orange');
+                } else if (data.status_text.startsWith("Death (")) {
+                    routeNameCell.classList.add('route-status-red');
+                }
+            }
         });
 
     </script>

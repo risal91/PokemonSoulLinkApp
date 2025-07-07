@@ -26,11 +26,12 @@ class Route(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String, unique=True, nullable=False)
     status = Column(String, default="") # Statusfeld für die Route
+    order = Column(Integer, default=0) # NEU: Spalte für die Sortierreihenfolge
 
     pokemon_catches = relationship('PokemonCatch', back_populates='route', cascade='all, delete-orphan')
 
     def __repr__(self):
-        return f"<Route(id={self.id}, name='{self.name}', status='{self.status}')>"
+        return f"<Route(id={self.id}, name='{self.name}', status='{self.status}', order={self.order})>"
 
 class PokemonCatch(Base):
     """Repräsentiert ein gefangenes Pokémon eines Spielers auf einer bestimmten Route."""
