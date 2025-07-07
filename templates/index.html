@@ -159,28 +159,6 @@
             <div id="messageBox" class="mt-4 p-3 rounded-md text-sm hidden"></div>
         </div>
 
-        <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-md">
-            <h2 class="text-2xl font-semibold text-green-800 mb-4">Spielstand-Verwaltung</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                <div>
-                    <label for="saveDbInput" class="block text-sm font-medium text-gray-700 mb-1">Neuen Spielstand speichern unter:</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="saveDbInput" placeholder="Name des Spielstands" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <button id="saveDbBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md shadow-lg transition duration-300">Speichern</button>
-                    </div>
-                </div>
-                <div>
-                    <label for="loadDbSelect" class="block text-sm font-medium text-gray-700 mb-1">Spielstand laden:</label>
-                    <div class="flex gap-2">
-                        <select id="loadDbSelect" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                            <option>Keine Spielstände gefunden...</option>
-                        </select>
-                        <button id="loadDbBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md shadow-lg transition duration-300">Laden</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
             <h2 class="text-2xl font-semibold text-blue-700 mb-4">Routenverwaltung</h2>
             <div class="flex flex-col md:flex-row gap-4 items-center mb-4">
@@ -286,7 +264,6 @@
         let levelCaps = [];
         let allPokemonNames = [];
         let allRouteNames = [];
-        let savedDatabases = []; // NEU HINZUGEFÜGT
 
         let removeRouteDropdown; // Für das "Route entfernen"-Dropdown
         let routeDropdown; // Für das "Route hinzufügen"-Dropdown
@@ -562,7 +539,6 @@
                 levelCaps = data.level_caps;
                 allPokemonNames = data.all_pokemon_names || [];
                 allRouteNames = data.all_route_names || [];
-                savedDatabases = data.saved_databases || []; // NEU HINZUGEFÜGT
 
                 // Route hinzufügen Dropdown
                 const routeSelectContainer = document.getElementById('routeSelectContainer');
@@ -612,7 +588,6 @@
 
                 renderTable();
                 renderGlobalOrders();
-                renderDatabaseSaves(); // NEUER AUFRUF
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
                 showMessage('Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.', 'error');
@@ -789,26 +764,6 @@ function renderGlobalOrders() {
             });
         }
         
-        // NEU: Funktion zum Füllen des Lade-Dropdowns
-        function renderDatabaseSaves() {
-            const select = document.getElementById('loadDbSelect');
-            select.innerHTML = ''; // Leere alte Optionen
-
-            if (savedDatabases.length === 0) {
-                const option = document.createElement('option');
-                option.textContent = 'Keine Spielstände gefunden...';
-                option.disabled = true;
-                select.appendChild(option);
-            } else {
-                savedDatabases.forEach(dbName => {
-                    const option = document.createElement('option');
-                    option.value = dbName;
-                    option.textContent = dbName.replace('.db', ''); // Zeige nutzerfreundlichen Namen an
-                    select.appendChild(option);
-                });
-            }
-        }
-
         // NEU: Drag & Drop Initialisierung
         let sortable = null;
         function initDragAndDrop() {
@@ -938,61 +893,6 @@ function renderGlobalOrders() {
             }
         });
 
-        // NEU: Event Listener für Spielstand speichern
-        document.getElementById('saveDbBtn').addEventListener('click', async () => {
-            const saveName = document.getElementById('saveDbInput').value.trim();
-            if (!saveName) {
-                showMessage('Bitte gib einen Namen für den Spielstand ein.', 'info');
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/database/save', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: saveName })
-                });
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.error || 'Unbekannter Fehler');
-                }
-                showMessage(result.message, 'success');
-                document.getElementById('saveDbInput').value = ''; // Feld leeren
-            } catch (error) {
-                console.error('Fehler beim Speichern des Spielstands:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
-            }
-        });
-
-        // NEU: Event Listener für Spielstand laden
-        document.getElementById('loadDbBtn').addEventListener('click', async () => {
-            const select = document.getElementById('loadDbSelect');
-            const filename = select.value;
-
-            if (!filename || select.options[select.selectedIndex].disabled) {
-                showMessage('Bitte wähle einen gültigen Spielstand zum Laden aus.', 'info');
-                return;
-            }
-
-            if (confirm(`Möchtest du wirklich den Spielstand "${select.options[select.selectedIndex].textContent}" laden? Alle ungespeicherten Änderungen am aktuellen Spielstand gehen verloren!`)) {
-                try {
-                    const response = await fetch('/api/database/load', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ filename: filename })
-                    });
-                    const result = await response.json();
-                    if (!response.ok) {
-                        throw new Error(result.error || 'Unbekannter Fehler');
-                    }
-                    showMessage(result.message, 'success');
-                    // Der Server sendet ein 'full_db_reset' Event, welches die Seite automatisch neu lädt.
-                } catch (error) {
-                    console.error('Fehler beim Laden des Spielstands:', error);
-                    showMessage(`Fehler: ${error.message}`, 'error');
-                }
-            }
-        });
 
         document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
             if (confirm('Sicher, dass ALLE gefangenen Pokémon und ALLE Routen-Stati zurückgesetzt werden sollen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
@@ -1050,18 +950,6 @@ function renderGlobalOrders() {
         socket.on('disconnect', () => {
             console.log('Verbindung zum Server getrennt.');
             showMessage('Verbindung zum Server getrennt!', 'error');
-        });
-
-        // NEU: Listener für gespeicherte Datenbanken
-        socket.on('database_saved', () => {
-            console.log('Ein neuer Spielstand wurde gespeichert (SocketIO). Lade Liste neu.');
-            // Nur die Daten neu abrufen, die sich ändern könnten, und das Dropdown aktualisieren.
-            fetch('/api/data')
-                .then(res => res.json())
-                .then(data => {
-                    savedDatabases = data.saved_databases || [];
-                    renderDatabaseSaves();
-                });
         });
 
         socket.on('player_added', (data) => {
