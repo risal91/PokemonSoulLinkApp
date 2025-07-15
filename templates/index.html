@@ -297,40 +297,95 @@
             const optionsDiv = optionsElement;
             const optionsList = optionsListElement;
             const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
-            if (!container || !input || !optionsDiv || !optionsList) { console.error("Dropdown-Elemente nicht gefunden."); return null; }
-            let selectedValue = null; let currentItems = initialItemsArray;
+
+            if (!container || !input || !optionsDiv || !optionsList) {
+                console.error("Fehler: Eines der Dropdown-Elemente konnte nicht gefunden werden.");
+                return null;
+            }
+
+            let selectedValue = null;
+            let currentItems = initialItemsArray;
+
             function renderOptions(filter = '') {
                 optionsList.innerHTML = '';
-                const filteredItems = currentItems.filter(item => item.toLowerCase().includes(filter.toLowerCase())).sort();
+                const filteredItems = currentItems.filter(item =>
+                    item.toLowerCase().includes(filter.toLowerCase())
+                ).sort();
+
                 if (filteredItems.length === 0) {
                     const noResult = document.createElement('div');
                     noResult.className = 'custom-select-option text-gray-500 italic';
-                    noResult.textContent = 'Keine Ergebnisse.'; optionsList.appendChild(noResult); return;
+                    noResult.textContent = 'Keine Ergebnisse gefunden.';
+                    optionsList.appendChild(noResult);
+                    return;
                 }
+
                 filteredItems.forEach(item => {
-                    const option = document.createElement('div'); option.className = 'custom-select-option'; if (item === selectedValue) { option.classList.add('selected'); }
-                    option.textContent = item; option.dataset.value = item;
+                    const option = document.createElement('div');
+                    option.className = 'custom-select-option';
+                    if (item === selectedValue) { option.classList.add('selected'); }
+                    option.textContent = item;
+                    option.dataset.value = item;
                     option.addEventListener('click', (e) => {
-                        e.stopPropagation(); input.textContent = item; selectedValue = item; optionsDiv.classList.remove('active');
+                        e.stopPropagation();
+                        input.textContent = item;
+                        selectedValue = item;
+                        optionsDiv.classList.remove('active');
                         if (onSelectCallback) { onSelectCallback(item); }
                     });
                     optionsList.appendChild(option);
                 });
             }
+
             input.addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => { if (openDiv !== optionsDiv) { openDiv.classList.remove('active'); } });
+                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
+                    if (openDiv !== optionsDiv && !openDiv.contains(e.target)) {
+                         openDiv.classList.remove('active');
+                    }
+                });
                 optionsDiv.classList.toggle('active');
-                if (searchInput) { searchInput.value = ''; renderOptions(''); searchInput.focus(); } else { renderOptions(''); }
+                if (searchInput) searchInput.value = '';
+                renderOptions(searchInput ? searchInput.value : '');
+                if (searchInput) searchInput.focus();
             });
-            if (searchInput) { searchInput.addEventListener('input', (e) => { renderOptions(e.target.value); }); searchInput.addEventListener('click', (e) => e.stopPropagation()); }
-            document.addEventListener('click', () => { optionsDiv.classList.remove('active'); });
-            input.textContent = searchPlaceholder; renderOptions();
+
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    renderOptions(e.target.value);
+                });
+            }
+
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) {
+                    optionsDiv.classList.remove('active');
+                }
+                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => {
+                    if (!openDiv.closest('.custom-select-container').contains(e.target)) {
+                        openDiv.classList.remove('active');
+                    }
+                });
+            });
+
+            input.textContent = searchPlaceholder;
+            renderOptions();
             return {
                 getSelectedValue: () => selectedValue,
-                setSelectedValue: (value) => { selectedValue = value; input.textContent = value || searchPlaceholder; },
-                reset: () => { selectedValue = null; input.textContent = searchPlaceholder; if (searchInput) searchInput.value = ''; renderOptions(); },
-                updateItems: (newItems) => { currentItems = newItems; renderOptions(searchInput ? searchInput.value : ''); }
+                setSelectedValue: (value) => {
+                    selectedValue = value;
+                    input.textContent = value || searchPlaceholder;
+                    renderOptions();
+                },
+                reset: () => {
+                    selectedValue = null;
+                    input.textContent = searchPlaceholder;
+                    if (searchInput) searchInput.value = '';
+                    renderOptions();
+                },
+                updateItems: (newItems) => {
+                    currentItems = newItems;
+                    renderOptions(searchInput ? searchInput.value : '');
+                }
             };
         }
 
@@ -428,6 +483,37 @@
                 allRouteNames = data.all_route_names || [];
                 savedDatabases = data.saved_databases || [];
                 
+                const routeSelectContainer = document.getElementById('routeSelectContainer');
+                const routeSelectInput = document.getElementById('routeSelectInput');
+                const routeSelectOptions = document.getElementById('routeSelectOptions');
+                const routeSelectOptionsList = routeSelectOptions.querySelector('.options-list');
+
+                if (!routeDropdown) {
+                    routeDropdown = setupCustomDropdown(
+                        routeSelectContainer, routeSelectInput, routeSelectOptions,
+                        routeSelectOptionsList, 'Route auswählen...', allRouteNames, null, true
+                    );
+                } else {
+                    routeDropdown.updateItems(allRouteNames);
+                    routeDropdown.reset();
+                }
+
+                const removeRouteSelectContainer = document.getElementById('removeRouteSelectContainer');
+                const removeRouteSelectInput = document.getElementById('removeRouteSelectInput');
+                const removeRouteSelectOptions = document.getElementById('removeRouteSelectOptions');
+                const removeRouteSelectOptionsList = removeRouteSelectOptions.querySelector('.options-list');
+                const currentRouteNames = routes.map(r => r.name);
+
+                if (!removeRouteDropdown) {
+                    removeRouteDropdown = setupCustomDropdown(
+                        removeRouteSelectContainer, removeRouteSelectInput, removeRouteSelectOptions,
+                        removeRouteSelectOptionsList, 'Route zum Entfernen auswählen...', currentRouteNames, null, true
+                    );
+                } else {
+                    removeRouteDropdown.updateItems(currentRouteNames);
+                    removeRouteDropdown.reset();
+                }
+
                 renderTable();
                 renderGlobalOrders();
                 renderDatabaseSaves();
@@ -447,7 +533,7 @@
 
             routes.forEach(route => {
                 const row = catchTableBody.insertRow();
-                row.className = 'hover:bg-gray-50';
+                row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
                 row.dataset.routeId = route.id;
                 
                 const routeNameCell = row.insertCell();
@@ -473,14 +559,75 @@
         }
 
         function renderGlobalOrders() {
-            // ... (vollständige Logik wie zuvor)
+            const ordersContainer = document.getElementById('ordersContainer');
+            ordersContainer.innerHTML = '';
+            const levelCapDisplay = document.getElementById('levelCapDisplay');
+            const currentLevelCapMax = document.getElementById('currentLevelCapMax');
+            const currentLevelCapAdjusted = document.getElementById('currentLevelCapAdjusted');
+
+            levelCaps.sort((a, b) => a.order_number - b.order_number);
+            let lastObtainedOrderNumber = 0;
+            globalOrders.forEach(go => {
+                if (go.is_obtained && go.order_number > lastObtainedOrderNumber) {
+                    lastObtainedOrderNumber = go.order_number;
+                }
+            });
+
+            let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
+
+            if (!nextLevelCap && levelCaps.length > 0) {
+                nextLevelCap = levelCaps[levelCaps.length - 1];
+            }
+
+            if (nextLevelCap) {
+                currentLevelCapMax.textContent = nextLevelCap.max_level;
+                currentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
+                levelCapDisplay.classList.remove('hidden');
+            } else {
+                levelCapDisplay.classList.add('hidden');
+            }
+
+            levelCaps.forEach(lc => {
+                const button = document.createElement('button');
+                button.className = 'order-button p-4 rounded-lg border-2 font-bold text-base shadow-md flex items-center justify-center text-center';
+                button.textContent = lc.name;
+                button.dataset.orderNumber = lc.order_number;
+                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
+
+                if (globalOrder && globalOrder.is_obtained) {
+                    button.classList.add('obtained');
+                }
+                
+                if (nextLevelCap && lc.order_number === nextLevelCap.order_number && !button.classList.contains('obtained')) {
+                    button.classList.add('next-cap-highlight');
+                }
+
+                button.addEventListener('click', async () => {
+                    const clickedOrderNumber = parseInt(button.dataset.orderNumber);
+                    try {
+                        const response = await fetch('/api/toggle_global_order', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ order_number: clickedOrderNumber })
+                        });
+                        if (!response.ok) {
+                            const errorResult = await response.json();
+                            throw new Error(errorResult.error || `HTTP error! status: ${response.status}`);
+                        }
+                    } catch (error) {
+                        console.error('Fehler beim Umschalten des globalen Orden-Status:', error);
+                        showMessage(`Fehler: ${error.message}`, 'error');
+                    }
+                });
+                ordersContainer.appendChild(button);
+            });
         }
 
         function renderDatabaseSaves() {
             const select = document.getElementById('loadDbSelect');
             select.innerHTML = '';
             if (savedDatabases.length === 0) {
-                select.innerHTML = '<option disabled>Keine Spielstände gefunden...</option>';
+                select.innerHTML = '<option disabled selected>Keine Spielstände...</option>';
             } else {
                 savedDatabases.forEach(dbName => {
                     const option = document.createElement('option');
@@ -495,10 +642,34 @@
         function initDragAndDrop() {
             const tableBody = document.getElementById('catchTableBody');
             if(sortable) sortable.destroy();
-            sortable = new Sortable(tableBody, { /* ... (vollständige Logik wie zuvor) */ });
+            sortable = new Sortable(tableBody, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                onEnd: async (evt) => {
+                    const rows = Array.from(tableBody.querySelectorAll('tr'));
+                    const orderedIds = rows.map(row => row.dataset.routeId);
+                    try {
+                        const response = await fetch('/api/reorder_routes', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ ordered_ids: orderedIds })
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            showMessage(`Fehler beim Speichern der Reihenfolge: ${errorData.error}`, 'error');
+                            fetchDataAndRender();
+                        } else {
+                            showMessage('Routen-Reihenfolge gespeichert!', 'success');
+                        }
+                    } catch (error) {
+                        console.error('Netzwerkfehler beim Speichern der Reihenfolge:', error);
+                        showMessage('Netzwerkfehler beim Speichern der Reihenfolge.', 'error');
+                    }
+                }
+            });
         }
 
-        // --- Helper functions for config management ---
         async function loadJsonFileContent(filename, textareaId) {
             try {
                 const response = await fetch(`/api/config/${filename}`);
@@ -556,13 +727,24 @@
             }
         }
 
-        // --- Init and Event Listeners ---
         document.addEventListener('DOMContentLoaded', () => {
-            // Initialer Ladevorgang
             fetchDataAndRender();
 
-            // Alle Event-Listener hier bündeln
-            document.getElementById('addPlayerBtn').addEventListener('click', async () => { /* ... */ });
+            document.getElementById('addPlayerBtn').addEventListener('click', async () => {
+                const playerName = document.getElementById('playerNameInput').value.trim();
+                if (!playerName) { return showMessage('Bitte Spielernamen eingeben.', 'info'); }
+                try {
+                    const response = await fetch('/api/add_player', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: playerName })
+                    });
+                    const result = await response.json();
+                    if (!response.ok) { throw new Error(result.error || 'Fehler beim Hinzufügen'); }
+                    document.getElementById('playerNameInput').value = '';
+                    showMessage('Spieler hinzugefügt!', 'success');
+                } catch (error) { showMessage(`Fehler: ${error.message}`, 'error'); }
+            });
+
             document.getElementById('openSummaryBtn').addEventListener('click', () => window.open('/summary', '_blank'));
             
             document.getElementById('saveDbBtn').addEventListener('click', async () => {
@@ -570,8 +752,7 @@
                 if (!saveName) { return showMessage('Bitte Namen eingeben.', 'info'); }
                 try {
                     const response = await fetch('/api/database/save', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ name: saveName })
                     });
                     const result = await response.json();
@@ -590,13 +771,33 @@
                 if (confirm(`Spielstand "${select.options[select.selectedIndex].textContent}" laden?`)) {
                     try {
                         const response = await fetch('/api/database/load', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ filename: filename })
                         });
                         const result = await response.json();
                         if (!response.ok) throw new Error(result.error);
                         showMessage(result.message, 'success');
+                    } catch (error) { showMessage(`Fehler: ${error.message}`, 'error'); }
+                }
+            });
+            
+            document.getElementById('resetDatabaseBtn').addEventListener('click', async () => {
+                if (confirm('WARNUNG: Dies wird die GESAMTE Datenbank zurücksetzen! Sicher?')) {
+                    try {
+                        const response = await fetch('/api/full_db_reset', { method: 'POST' });
+                        if (!response.ok) { throw new Error((await response.json()).error); }
+                        showMessage('Datenbank zurückgesetzt! Seite wird neu geladen.', 'success');
+                        setTimeout(() => location.reload(), 1500);
+                    } catch (error) { showMessage(`Fehler: ${error.message}`, 'error'); }
+                }
+            });
+
+            document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
+                if (confirm('Sicher, dass alle Fänge und Stati zurückgesetzt werden sollen?')) {
+                    try {
+                        const response = await fetch('/api/reset_all_data', { method: 'POST' });
+                        if (!response.ok) { throw new Error((await response.json()).error); }
+                        showMessage('Alle Fänge & Stati zurückgesetzt!', 'success');
                     } catch (error) { showMessage(`Fehler: ${error.message}`, 'error'); }
                 }
             });
@@ -617,34 +818,21 @@
             fetchDataAndRender();
         });
         socket.on('disconnect', () => showMessage('Verbindung zum Server getrennt!', 'error'));
-        socket.on('database_saved', () => fetchDataAndRender());
+        
+        // Listener für Events, die ein komplettes Neuladen erfordern
+        ['database_saved', 'player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'configs_reloaded', 'catch_updated', 'route_status_updated'].forEach(event => {
+            socket.on(event, () => fetchDataAndRender());
+        });
+
+        // KORRIGIERTER LISTENER für die Orden
+        socket.on('global_order_toggled', () => {
+            console.log("Orden-Update erhalten, lade Daten neu.");
+            fetchDataAndRender();
+        });
+
         socket.on('full_db_reset', () => {
             showMessage('Datenbank wurde geändert. Seite wird neu geladen.', 'info');
             setTimeout(() => location.reload(), 1500);
-        });
-        // Weitere Listener, die ein komplettes Neuladen erfordern
-        ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'configs_reloaded'].forEach(event => {
-            socket.on(event, () => fetchDataAndRender());
-        });
-        // Granulare Listener für Effizienz
-        socket.on('catch_updated', (data) => {
-            let catchEntry = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
-            if(catchEntry) catchEntry.pokemon_name = data.pokemon_name;
-            const inputElement = document.querySelector(`#pokemon-dropdown-container-${data.player_id}-${data.route_id} .custom-select-input`);
-            if (inputElement) inputElement.textContent = data.pokemon_name || 'Pokémon';
-        });
-        socket.on('global_order_toggled', () => renderGlobalOrders());
-        socket.on('route_status_updated', (data) => {
-            let routeEntry = routes.find(r => r.id === data.route_id);
-            if(routeEntry) routeEntry.status = data.status_text;
-            const statusInputElement = document.querySelector(`#status-dropdown-index-container-${data.route_id} .custom-select-input`);
-            if (statusInputElement) statusInputElement.textContent = data.status_text || 'Status';
-            const routeRowCell = document.querySelector(`tr[data-route-id='${data.route_id}'] > td:first-child`);
-            if(routeRowCell) {
-                routeRowCell.classList.remove('route-status-orange', 'route-status-red');
-                if (data.status_text === "Death Link" || data.status_text === "No Catch") { routeRowCell.classList.add('route-status-orange'); }
-                else if (data.status_text && data.status_text.startsWith("Death (")) { routeRowCell.classList.add('route-status-red'); }
-            }
         });
     </script>
 </body>
