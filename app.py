@@ -11,13 +11,22 @@ import os
 import threading
 import time
 import socket
+import shutil # Import für Dateioperationen
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'YOUR_SUPER_SECRET_KEY_HERE_CHANGE_THIS_IN_PRODUCTION'  # Wichtig: In Produktion ändern!
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')  # async_mode auf 'gevent' setzen
 
+# Verzeichnis für Spielstände definieren und erstellen
+SAVES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'saves')
+if not os.path.exists(SAVES_DIR):
+    os.makedirs(SAVES_DIR)
+
+# Pfad zur Haupt-Datenbankdatei - KORRIGIERT
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soul_link_challenge.db')
+
+
 # --- Globale Config-Verwaltung ---
-# Verwenden wir ein Dictionary, das wir neu laden können
 _app_config_data = {
     "ALL_ROUTES": [],
     "ALL_POKEMON_NAMES": []
@@ -25,9 +34,7 @@ _app_config_data = {
 
 
 def _load_json_data_internal(filename):
-    """Interne Hilfsfunktion zum Laden einer JSON-Datei, auch für Config-Endpunkte."""
-    # Verwende os.path.abspath(__file__) um den absoluten Pfad des Skripts zu erhalten
-    # und dann os.path.join, um den vollständigen Pfad zur JSON-Datei zu bilden.
+    """Interne Hilfsfunktion zum Laden einer JSON-Datei."""
     filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
     try:
         if not os.path.exists(filepath):
@@ -55,11 +62,6 @@ def reload_app_configs():
 # Lade die Configs beim App-Start initial
 reload_app_configs()
 
-# Jetzt greifen wir auf die globalen Daten über _app_config_data zu
-# Diese Variablen werden beim initialen Start gesetzt und dann über _app_config_data aktualisiert
-# Sie sind im Grunde nur Aliasse für die Daten in _app_config_data
-ALL_ROUTES = _app_config_data["ALL_ROUTES"]
-ALL_POKEMON_NAMES = _app_config_data["ALL_POKEMON_NAMES"]
 
 # --- Datenbank-Initialisierung beim Start der App ---
 with app.app_context():
@@ -82,11 +84,10 @@ def summary():
     return render_template('summary.html')
 
 
-# --- API Routen (bestehende) ---
+# --- API Routen ---
 @app.route('/api/data')
 def get_all_data():
     session = get_db_session()
-    # Wichtig: Routen nach der neuen `order`-Spalte sortieren
     routes = session.query(Route).order_by(Route.order).all()
     players = session.query(Player).all()
     catches = session.query(PokemonCatch).all()
@@ -110,14 +111,22 @@ def get_all_data():
     ]
 
     session.close()
+
+    saved_dbs = []
+    try:
+        saved_dbs = [f for f in os.listdir(SAVES_DIR) if f.endswith('.db')]
+    except Exception as e:
+        print(f"Fehler beim Lesen des Save-Verzeichnisses: {e}")
+
     return jsonify({
         'players': players_data,
         'routes': routes_data,
         'catches': catches_data,
         'global_orders': global_orders_data,
         'level_caps': level_caps_data,
-        'all_pokemon_names': _app_config_data["ALL_POKEMON_NAMES"],  # Greife auf die neu ladbare Config zu
-        'all_route_names': _app_config_data["ALL_ROUTES"],  # Greife auf die neu ladbare Config zu
+        'all_pokemon_names': _app_config_data["ALL_POKEMON_NAMES"],
+        'all_route_names': _app_config_data["ALL_ROUTES"],
+        'saved_databases': saved_dbs,
     })
 
 
@@ -167,7 +176,6 @@ def add_route():
         if existing_route:
             return jsonify({'error': 'Route existiert bereits'}), 409
 
-        # Setze die Reihenfolge auf die aktuelle Anzahl der Routen
         current_route_count = session.query(Route).count()
         new_route = Route(name=route_name, status="", order=current_route_count)
         session.add(new_route)
@@ -328,7 +336,7 @@ def clear_route_data():
     finally:
         session.close()
 
-# NEUER ENDPUNKT FÜR DRAG & DROP
+
 @app.route('/api/reorder_routes', methods=['POST'])
 def reorder_routes():
     data = request.json
@@ -354,6 +362,54 @@ def reorder_routes():
         session.close()
 
 
+@app.route('/api/database/save', methods=['POST'])
+def save_database_state():
+    data = request.json
+    save_name = data.get('name')
+
+    if not save_name:
+        return jsonify({'error': 'Name für den Spielstand fehlt.'}), 400
+
+    safe_filename = "".join([c for c in save_name if c.isalpha() or c.isdigit() or c in ' ._-']).rstrip()
+    if not safe_filename:
+        return jsonify({'error': 'Ungültiger Name für den Spielstand.'}), 400
+
+    dest_path = os.path.join(SAVES_DIR, f"{safe_filename}.db")
+
+    if os.path.exists(dest_path):
+        return jsonify({'error': 'Ein Spielstand mit diesem Namen existiert bereits.'}), 409
+
+    try:
+        shutil.copy(DB_PATH, dest_path)
+        socketio.emit('database_saved')
+        return jsonify({'message': f'Spielstand "{safe_filename}" erfolgreich gespeichert.'}), 200
+    except Exception as e:
+        print(f"Fehler beim Speichern der Datenbank: {e}")
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
+
+
+@app.route('/api/database/load', methods=['POST'])
+def load_database_state():
+    data = request.json
+    filename = data.get('filename')
+
+    if not filename:
+        return jsonify({'error': 'Dateiname zum Laden fehlt.'}), 400
+
+    source_path = os.path.join(SAVES_DIR, filename)
+
+    if not os.path.exists(source_path):
+        return jsonify({'error': 'Der gewählte Spielstand existiert nicht.'}), 404
+
+    try:
+        shutil.copy(source_path, DB_PATH)
+        socketio.emit('full_db_reset')
+        return jsonify({'message': f'Spielstand "{filename}" erfolgreich geladen. Die App wird neu gestartet.'}), 200
+    except Exception as e:
+        print(f"Fehler beim Laden der Datenbank: {e}")
+        return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
+
+
 @app.route('/api/full_db_reset', methods=['POST'])
 def full_db_reset():
     try:
@@ -365,7 +421,6 @@ def full_db_reset():
         return jsonify({'error': f'Interner Serverfehler: {str(e)}'}), 500
 
 
-# NEUE API-ENDPUNKTE FÜR KONFIGURATIONSVERWALTUNG
 @app.route('/api/config/<filename>', methods=['GET'])
 def get_config_file(filename):
     """Gibt den Inhalt einer JSON-Konfigurationsdatei zurück."""
@@ -396,17 +451,12 @@ def save_config_file(filename):
 
     filepath = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
     try:
-        # Versuche, den JSON-Inhalt zu parsen, um Syntaxfehler zu vermeiden
         json.loads(content)
-
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
-
-        # NEU: Lade Konfigurationen nach dem Speichern neu
         if filename in ['routes.json', 'pokemon_names.json']:
-            reload_app_configs()  # Lädt nur die in-memory Listen neu
-
-        socketio.emit('config_saved', {'filename': filename})  # SocketIO-Event senden
+            reload_app_configs()
+        socketio.emit('config_saved', {'filename': filename})
         return jsonify({'message': f'Datei {filename} erfolgreich gespeichert.'}), 200
     except json.JSONDecodeError as e:
         return jsonify({'error': f'Ungültiges JSON-Format in {filename}: {str(e)}'}), 400
@@ -418,7 +468,7 @@ def save_config_file(filename):
 def reload_configs_api():
     """Trigger zum Neuladen der Konfigurationsdateien."""
     reload_app_configs()
-    socketio.emit('configs_reloaded')  # SocketIO-Event senden
+    socketio.emit('configs_reloaded')
     return jsonify({'message': 'App-Konfigurationen neu geladen.'}), 200
 
 
@@ -432,21 +482,21 @@ def handle_disconnect():
     print('Client getrennt!')
 
 
-if __name__ == '__main__':
-    FLASK_HOST = "0.0.0.0"
-    FLASK_PORT = 5000
-
-
-    def open_browser_after_start():
-        import webbrowser
-        import time
-        time.sleep(1.5)
-        try:
-            webbrowser.open_new(f"http://127.0.0.1:{FLASK_PORT}/")
-        except Exception as e:
-            print(f"Fehler beim automatischen Öffnen des Browsers: {e}")
-
-
-    threading.Thread(target=open_browser_after_start).start()
-
-    socketio.run(app, debug=True, host=FLASK_HOST, port=FLASK_PORT)
+# Dieser Block ist für den Betrieb mit Gunicorn auskommentiert
+#
+# if __name__ == '__main__':
+#     FLASK_HOST = "0.0.0.0"
+#     FLASK_PORT = 5000
+#
+#     def open_browser_after_start():
+#         import webbrowser
+#         import time
+#         time.sleep(1.5)
+#         try:
+#             webbrowser.open_new(f"http://127.0.0.1:{FLASK_PORT}/")
+#         except Exception as e:
+#             print(f"Fehler beim automatischen Öffnen des Browsers: {e}")
+#
+#     threading.Thread(target=open_browser_after_start).start()
+#
+#     socketio.run(app, debug=True, host=FLASK_HOST, port=FLASK_PORT)
