@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pokémon Soul Link Challenge</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -159,6 +159,28 @@
             <div id="messageBox" class="mt-4 p-3 rounded-md text-sm hidden"></div>
         </div>
 
+        <div class="mb-8 p-6 bg-green-50 rounded-lg shadow-md">
+            <h2 class="text-2xl font-semibold text-green-800 mb-4">Spielstand-Verwaltung</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <div>
+                    <label for="saveDbInput" class="block text-sm font-medium text-gray-700 mb-1">Neuen Spielstand speichern unter:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="saveDbInput" placeholder="Name des Spielstands" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <button id="saveDbBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-md shadow-lg transition duration-300">Speichern</button>
+                    </div>
+                </div>
+                <div>
+                    <label for="loadDbSelect" class="block text-sm font-medium text-gray-700 mb-1">Spielstand laden:</label>
+                    <div class="flex gap-2">
+                        <select id="loadDbSelect" class="flex-grow p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                            <option>Keine Spielstände gefunden...</option>
+                        </select>
+                        <button id="loadDbBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-md shadow-lg transition duration-300">Laden</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="mb-8 p-6 bg-blue-50 rounded-lg shadow-md">
             <h2 class="text-2xl font-semibold text-blue-700 mb-4">Routenverwaltung</h2>
             <div class="flex flex-col md:flex-row gap-4 items-center mb-4">
@@ -250,7 +272,6 @@
             </div>
         </div>
 
-
     </div>
 
     <script>
@@ -264,9 +285,10 @@
         let levelCaps = [];
         let allPokemonNames = [];
         let allRouteNames = [];
+        let savedDatabases = [];
 
-        let removeRouteDropdown; // Für das "Route entfernen"-Dropdown
-        let routeDropdown; // Für das "Route hinzufügen"-Dropdown
+        let removeRouteDropdown; 
+        let routeDropdown;
 
 
         // --- Custom Dropdown Logic ---
@@ -275,7 +297,6 @@
             const input = inputElement;
             const optionsDiv = optionsElement;
             const optionsList = optionsListElement;
-
             const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
 
             if (!container || !input || !optionsDiv || !optionsList) {
@@ -303,9 +324,7 @@
                 filteredItems.forEach(item => {
                     const option = document.createElement('div');
                     option.className = 'custom-select-option';
-                    if (item === selectedValue) {
-                        option.classList.add('selected');
-                    }
+                    if (item === selectedValue) { option.classList.add('selected'); }
                     option.textContent = item;
                     option.dataset.value = item;
                     option.addEventListener('click', (e) => {
@@ -313,9 +332,7 @@
                         input.textContent = item;
                         selectedValue = item;
                         optionsDiv.classList.remove('active');
-                        if (onSelectCallback) {
-                            onSelectCallback(item);
-                        }
+                        if (onSelectCallback) { onSelectCallback(item); }
                     });
                     optionsList.appendChild(option);
                 });
@@ -373,7 +390,6 @@
             };
         }
 
-        // Funktion zum Erstellen des Pokémon-Dropdowns
         function createPokemonDropdown(parentElement, initialValue, playerId, routeId) {
             const container = document.createElement('div');
             container.id = `pokemon-dropdown-container-${playerId}-${routeId}`;
@@ -404,18 +420,11 @@
 
             parentElement.appendChild(container);
 
-
             const dropdown = setupCustomDropdown(
-                container,
-                input,
-                optionsDiv,
-                optionsList,
-                'Pokémon eintragen',
-                allPokemonNames,
+                container, input, optionsDiv, optionsList, 'Pokémon eintragen', allPokemonNames,
                 async (selectedPokemonName) => {
                     await updateCatchOnServer(playerId, routeId, selectedPokemonName);
-                },
-                true
+                }, true
             );
 
             if (dropdown) {
@@ -442,14 +451,8 @@
             }
         }
 
-        // Funktion zum Erstellen des Status-Dropdowns für eine Route
         function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
-            const statusOptions = [
-                "",
-                "Death Link",
-                "No Catch",
-                ...players.map(player => `Death (${player.name})`)
-            ];
+            const statusOptions = ["", "Death Link", "No Catch", ...players.map(player => `Death (${player.name})`)];
 
             const containerDiv = document.createElement('div');
             containerDiv.id = `status-dropdown-index-container-${routeId}`;
@@ -473,14 +476,8 @@
 
             parentElement.appendChild(containerDiv);
 
-
             const dropdown = setupCustomDropdown(
-                containerDiv,
-                inputDiv,
-                optionsDiv,
-                optionsListDiv,
-                'Status',
-                statusOptions,
+                containerDiv, inputDiv, optionsDiv, optionsListDiv, 'Status', statusOptions,
                 async (selectedStatus) => {
                     try {
                         const response = await fetch('/api/update_route_status', {
@@ -495,8 +492,7 @@
                     } catch (error) {
                         console.error('Netzwerkfehler beim Aktualisieren des Routenstatus:', error);
                     }
-                },
-                false
+                }, false
             );
 
             if (dropdown) {
@@ -507,8 +503,6 @@
             return dropdown;
         }
 
-
-        // --- Hilfsfunktionen für UI-Nachrichten ---
         function showMessage(message, type = 'info') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
@@ -524,7 +518,6 @@
             }, 5000);
         }
 
-        // --- Daten vom Server abrufen und rendern ---
         async function fetchDataAndRender() {
             try {
                 const response = await fetch('/api/data');
@@ -539,8 +532,8 @@
                 levelCaps = data.level_caps;
                 allPokemonNames = data.all_pokemon_names || [];
                 allRouteNames = data.all_route_names || [];
+                savedDatabases = data.saved_databases || [];
 
-                // Route hinzufügen Dropdown
                 const routeSelectContainer = document.getElementById('routeSelectContainer');
                 const routeSelectInput = document.getElementById('routeSelectInput');
                 const routeSelectOptions = document.getElementById('routeSelectOptions');
@@ -548,38 +541,24 @@
 
                 if (!routeDropdown) {
                     routeDropdown = setupCustomDropdown(
-                        routeSelectContainer,
-                        routeSelectInput,
-                        routeSelectOptions,
-                        routeSelectOptionsList,
-                        'Route auswählen...',
-                        allRouteNames,
-                        null,
-                        true
+                        routeSelectContainer, routeSelectInput, routeSelectOptions,
+                        routeSelectOptionsList, 'Route auswählen...', allRouteNames, null, true
                     );
                 } else {
                     routeDropdown.updateItems(allRouteNames);
                     routeDropdown.reset();
                 }
 
-                // Route entfernen Dropdown
                 const removeRouteSelectContainer = document.getElementById('removeRouteSelectContainer');
                 const removeRouteSelectInput = document.getElementById('removeRouteSelectInput');
                 const removeRouteSelectOptions = document.getElementById('removeRouteSelectOptions');
                 const removeRouteSelectOptionsList = removeRouteSelectOptions.querySelector('.options-list');
-
                 const currentRouteNames = routes.map(r => r.name);
 
                 if (!removeRouteDropdown) {
                     removeRouteDropdown = setupCustomDropdown(
-                        removeRouteSelectContainer,
-                        removeRouteSelectInput,
-                        removeRouteSelectOptions,
-                        removeRouteSelectOptionsList,
-                        'Route zum Entfernen auswählen...',
-                        currentRouteNames,
-                        null,
-                        true
+                        removeRouteSelectContainer, removeRouteSelectInput, removeRouteSelectOptions,
+                        removeRouteSelectOptionsList, 'Route zum Entfernen auswählen...', currentRouteNames, null, true
                     );
                 } else {
                     removeRouteDropdown.updateItems(currentRouteNames);
@@ -588,6 +567,8 @@
 
                 renderTable();
                 renderGlobalOrders();
+                renderDatabaseSaves();
+                initDragAndDrop();
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
                 showMessage('Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.', 'error');
@@ -610,11 +591,10 @@
             tableHeadRow.innerHTML += '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Status</th>';
             tableHeadRow.innerHTML += '<th class="py-3 px-4 border-b-2 border-gray-200 text-left text-sm font-semibold text-gray-700 uppercase tracking-wider">Aktionen</th>';
 
-
             routes.forEach(route => {
                 const row = document.createElement('tr');
                 row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
-                row.dataset.routeId = route.id; // Wichtig für Drag & Drop
+                row.dataset.routeId = route.id;
 
                 const routeNameCell = document.createElement('td');
                 routeNameCell.className = 'py-3 px-4 border-b border-gray-200 font-medium text-gray-800';
@@ -627,15 +607,11 @@
                 }
                 row.appendChild(routeNameCell);
 
-
                 players.forEach(player => {
                     const catchCell = document.createElement('td');
                     catchCell.className = 'py-3 px-4 border-b border-gray-200';
-
                     const existingCatch = catches.find(c => c.player_id === player.id && c.route_id === route.id);
-                    const pokemonName = existingCatch ? existingCatch.pokemon_name : null;
-
-                    createPokemonDropdown(catchCell, pokemonName, player.id, route.id);
+                    createPokemonDropdown(catchCell, existingCatch ? existingCatch.pokemon_name : null, player.id, route.id);
                     row.appendChild(catchCell);
                 });
 
@@ -646,38 +622,13 @@
 
                 const actionsCell = document.createElement('td');
                 actionsCell.className = 'py-3 px-4 border-b border-gray-200';
-                const clearRouteBtn = document.createElement('button');
-                clearRouteBtn.className = 'bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded transition duration-300 ease-in-out';
-                clearRouteBtn.textContent = 'Clear Route Daten';
-                clearRouteBtn.title = `Alle Pokémon und Status für Route "${route.name}" zurücksetzen`;
-                clearRouteBtn.addEventListener('click', async () => {
-                    if (confirm(`Sicher, dass ALLE Pokémon und der Status für Route "${route.name}" zurückgesetzt werden sollen?`)) {
-                        try {
-                            const response = await fetch('/api/clear_route_data', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ route_id: route.id })
-                            });
-                            if (!response.ok) {
-                                const errorData = await response.json();
-                                showMessage(`Fehler beim Zurücksetzen der Routendaten: ${errorData.error}`, 'error');
-                            } else {
-                                showMessage(`Daten für Route "${route.name}" zurückgesetzt!`, 'success');
-                            }
-                        } catch (error) {
-                            console.error('Netzwerkfehler beim Zurücksetzen der Routendaten.', error);
-                            showMessage('Netzwerkfehler beim Zurücksetzen der Routendaten.', 'error');
-                        }
-                    }
-                });
-                actionsCell.appendChild(clearRouteBtn);
                 row.appendChild(actionsCell);
 
                 catchTableBody.appendChild(row);
             });
         }
 
-function renderGlobalOrders() {
+        function renderGlobalOrders() {
             const ordersContainer = document.getElementById('ordersContainer');
             ordersContainer.innerHTML = '';
             const levelCapDisplay = document.getElementById('levelCapDisplay');
@@ -685,7 +636,6 @@ function renderGlobalOrders() {
             const currentLevelCapAdjusted = document.getElementById('currentLevelCapAdjusted');
 
             levelCaps.sort((a, b) => a.order_number - b.order_number);
-
             let lastObtainedOrderNumber = 0;
             globalOrders.forEach(go => {
                 if (go.is_obtained && go.order_number > lastObtainedOrderNumber) {
@@ -693,11 +643,7 @@ function renderGlobalOrders() {
                 }
             });
 
-            let nextLevelCap = null;
-            nextLevelCap = levelCaps.find(lc => {
-                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
-                return !(globalOrder && globalOrder.is_obtained);
-            });
+            let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
 
             if (!nextLevelCap && levelCaps.length > 0) {
                 nextLevelCap = levelCaps[levelCaps.length - 1];
@@ -707,44 +653,27 @@ function renderGlobalOrders() {
                 currentLevelCapMax.textContent = nextLevelCap.max_level;
                 currentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
                 levelCapDisplay.classList.remove('hidden');
-            } else if (levelCaps.length > 0) {
-                currentLevelCapMax.textContent = levelCaps[levelCaps.length - 1].max_level;
-                currentLevelCapAdjusted.textContent = levelCaps[levelCaps.length - 1].adjusted_level;
-                levelCapDisplay.classList.remove('hidden');
             } else {
                 levelCapDisplay.classList.add('hidden');
             }
 
             levelCaps.forEach(lc => {
                 const button = document.createElement('button');
-                button.className = 'order-button p-4 rounded-lg border-2 font-bold text-base shadow-md flex items-center justify-center text-center transition duration-200 ease-in-out';
+                button.className = 'order-button p-4 rounded-lg border-2 font-bold text-base shadow-md flex items-center justify-center text-center';
                 button.textContent = lc.name;
                 button.dataset.orderNumber = lc.order_number;
-
                 const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
 
                 if (globalOrder && globalOrder.is_obtained) {
                     button.classList.add('obtained');
-                } else {
-                    button.classList.remove('obtained');
                 }
-
-                if (nextLevelCap && lc.order_number === nextLevelCap.order_number && !(globalOrder && globalOrder.is_obtained)) {
+                
+                if (nextLevelCap && lc.order_number === nextLevelCap.order_number && !button.classList.contains('obtained')) {
                     button.classList.add('next-cap-highlight');
-                } else {
-                    button.classList.remove('next-cap-highlight');
                 }
 
                 button.addEventListener('click', async () => {
                     const clickedOrderNumber = parseInt(button.dataset.orderNumber);
-
-                    const clickedLevelCap = levelCaps.find(item => item.order_number === clickedOrderNumber);
-                    if (clickedLevelCap) {
-                        currentLevelCapMax.textContent = clickedLevelCap.max_level;
-                        currentLevelCapAdjusted.textContent = clickedLevelCap.adjusted_level;
-                        levelCapDisplay.classList.remove('hidden');
-                    }
-
                     try {
                         const response = await fetch('/api/toggle_global_order', {
                             method: 'POST',
@@ -763,22 +692,36 @@ function renderGlobalOrders() {
                 ordersContainer.appendChild(button);
             });
         }
+
+        function renderDatabaseSaves() {
+            const select = document.getElementById('loadDbSelect');
+            select.innerHTML = '';
+            if (savedDatabases.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = 'Keine Spielstände gefunden...';
+                option.disabled = true;
+                select.appendChild(option);
+            } else {
+                savedDatabases.forEach(dbName => {
+                    const option = document.createElement('option');
+                    option.value = dbName;
+                    option.textContent = dbName.replace('.db', '');
+                    select.appendChild(option);
+                });
+            }
+        }
         
-        // NEU: Drag & Drop Initialisierung
         let sortable = null;
         function initDragAndDrop() {
             const tableBody = document.getElementById('catchTableBody');
-            if (sortable) {
-                sortable.destroy();
-            }
+            if(sortable) sortable.destroy();
             sortable = new Sortable(tableBody, {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
-                onEnd: async function (evt) {
+                onEnd: async (evt) => {
                     const rows = Array.from(tableBody.querySelectorAll('tr'));
                     const orderedIds = rows.map(row => row.dataset.routeId);
-
                     try {
                         const response = await fetch('/api/reorder_routes', {
                             method: 'POST',
@@ -788,7 +731,6 @@ function renderGlobalOrders() {
                         if (!response.ok) {
                             const errorData = await response.json();
                             showMessage(`Fehler beim Speichern der Reihenfolge: ${errorData.error}`, 'error');
-                            // Optional: Reihenfolge im UI zurücksetzen
                             fetchDataAndRender();
                         } else {
                             showMessage('Routen-Reihenfolge gespeichert!', 'success');
@@ -801,150 +743,192 @@ function renderGlobalOrders() {
             });
         }
 
-
-        // --- Event Listener für Buttons ---
-        document.getElementById('addPlayerBtn').addEventListener('click', async () => {
-            const playerName = document.getElementById('playerNameInput').value.trim();
-            if (!playerName) {
-                showMessage('Bitte gib einen Spielernamen ein.', 'info');
-                return;
-            }
-            try {
-                const response = await fetch('/api/add_player', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: playerName })
-                });
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.error || 'Fehler beim Hinzufügen des Spielers');
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            document.getElementById('addPlayerBtn').addEventListener('click', async () => {
+                const playerName = document.getElementById('playerNameInput').value.trim();
+                if (!playerName) {
+                    showMessage('Bitte gib einen Spielernamen ein.', 'info');
+                    return;
                 }
-                document.getElementById('playerNameInput').value = '';
-                showMessage('Spieler hinzugefügt!', 'success');
-            } catch (error) {
-                console.error('Fehler beim Hinzufügen des Spielers:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
-            }
-        });
-
-        document.getElementById('addRouteBtn').addEventListener('click', async () => {
-            const routeName = routeDropdown.getSelectedValue();
-            if (!routeName) {
-                showMessage('Bitte wähle eine Route aus der Liste aus.', 'info');
-                return;
-            }
-            const isRouteAlreadyAdded = routes.some(r => r.name === routeName);
-            if (isRouteAlreadyAdded) {
-                showMessage(`Die Route "${routeName}" wurde bereits hinzugefügt.`, 'info');
-                routeDropdown.reset();
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/add_route', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: routeName })
-                });
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.error || 'Fehler beim Hinzufügen der Route');
-                }
-                routeDropdown.reset();
-                showMessage('Route hinzugefügt!', 'success');
-            }
-            catch (error) {
-                console.error('Fehler beim Hinzufügen der Route:', error);
-                showMessage(`Fehler: ${error.message}`, 'error');
-            }
-        });
-
-        // NEUER EVENT LISTENER FÜR "ROUTE ENTFERNEN"
-        document.getElementById('removeRouteBtn').addEventListener('click', async () => {
-            const routeName = removeRouteDropdown.getSelectedValue();
-            if (!routeName) {
-                showMessage('Bitte wähle eine Route zum Entfernen aus der Liste aus.', 'info');
-                return;
-            }
-            const routeToRemove = routes.find(r => r.name === routeName);
-            if (!routeToRemove) {
-                showMessage(`Route "${routeName}" nicht gefunden.`, 'error');
-                return;
-            }
-
-            if (confirm(`Sicher, dass die Route "${routeName}" und ALLE zugehörigen Pokémon-Fänge und Stati gelöscht werden sollen? Diese Aktion kann NICHT rückgängig gemacht werden!`)) {
                 try {
-                    const response = await fetch('/api/clear_route_data', {
+                    const response = await fetch('/api/add_player', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ route_id: routeToRemove.id })
+                        body: JSON.stringify({ name: playerName })
                     });
+                    const result = await response.json();
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        showMessage(`Fehler beim Entfernen der Route: ${errorData.error}`, 'error');
-                    } else {
-                        showMessage(`Route "${routeName}" erfolgreich entfernt!`, 'success');
-                        removeRouteDropdown.reset();
+                        throw new Error(result.error || 'Fehler beim Hinzufügen des Spielers');
                     }
+                    document.getElementById('playerNameInput').value = '';
+                    showMessage('Spieler hinzugefügt!', 'success');
                 } catch (error) {
-                    console.error('Netzwerkfehler beim Entfernen der Route:', error);
-                    showMessage('Netzwerkfehler beim Entfernen der Route.', 'error');
+                    console.error('Fehler beim Hinzufügen des Spielers:', error);
+                    showMessage(`Fehler: ${error.message}`, 'error');
                 }
-            }
-        });
+            });
 
-
-        document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
-            if (confirm('Sicher, dass ALLE gefangenen Pokémon und ALLE Routen-Stati zurückgesetzt werden sollen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
+            document.getElementById('addRouteBtn').addEventListener('click', async () => {
+                const routeName = routeDropdown.getSelectedValue();
+                if (!routeName) {
+                    showMessage('Bitte wähle eine Route aus der Liste aus.', 'info');
+                    return;
+                }
+                const isRouteAlreadyAdded = routes.some(r => r.name === routeName);
+                if (isRouteAlreadyAdded) {
+                    showMessage(`Die Route "${routeName}" wurde bereits hinzugefügt.`, 'info');
+                    routeDropdown.reset();
+                    return;
+                }
                 try {
-                    const response = await fetch('/api/reset_all_data', {
-                        method: 'POST'
+                    const response = await fetch('/api/add_route', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: routeName })
                     });
+                    const result = await response.json();
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        showMessage(`Fehler beim Zurücksetzen aller Daten: ${errorData.error}`, 'error');
-                    } else {
-                        showMessage('Alle Daten erfolgreich zurückgesetzt!', 'success');
+                        throw new Error(result.error || 'Fehler beim Hinzufügen der Route');
                     }
-                } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen aller Daten.', error);
-                    showMessage('Netzwerkfehler beim Zurücksetzen aller Daten.', 'error');
+                    routeDropdown.reset();
+                    showMessage('Route hinzugefügt!', 'success');
                 }
-            }
-        });
+                catch (error) {
+                    console.error('Fehler beim Hinzufügen der Route:', error);
+                    showMessage(`Fehler: ${error.message}`, 'error');
+                }
+            });
 
-        // NEUER EVENT LISTENER FÜR "KURZANSICHT ÖFFNEN"
-        document.getElementById('openSummaryBtn').addEventListener('click', () => {
-            window.open('/summary', '_blank');
-        });
+            document.getElementById('removeRouteBtn').addEventListener('click', async () => {
+                const routeName = removeRouteDropdown.getSelectedValue();
+                if (!routeName) {
+                    showMessage('Bitte wähle eine Route zum Entfernen aus der Liste aus.', 'info');
+                    return;
+                }
+                const routeToRemove = routes.find(r => r.name === routeName);
+                if (!routeToRemove) {
+                    showMessage(`Route "${routeName}" nicht gefunden.`, 'error');
+                    return;
+                }
+                if (confirm(`Sicher, dass die Route "${routeName}" und ALLE zugehörigen Pokémon-Fänge und Stati gelöscht werden sollen? Diese Aktion kann NICHT rückgängig gemacht werden!`)) {
+                    try {
+                        const response = await fetch('/api/remove_route', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ route_id: routeToRemove.id })
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            showMessage(`Fehler beim Entfernen der Route: ${errorData.error}`, 'error');
+                        } else {
+                            showMessage(`Route "${routeName}" erfolgreich entfernt!`, 'success');
+                            removeRouteDropdown.reset();
+                        }
+                    } catch (error) {
+                        console.error('Netzwerkfehler beim Entfernen der Route:', error);
+                        showMessage('Netzwerkfehler beim Entfernen der Route.', 'error');
+                    }
+                }
+            });
 
-        // NEUER EVENT LISTENER FÜR "DATENBANK VOLLSTÄNDIG ZURÜCKSETZEN"
-        document.getElementById('resetDatabaseBtn').addEventListener('click', async () => {
-            if (confirm('WARNUNG: Dies wird die GESAMTE Datenbank zurücksetzen (Spieler, Routen, Fänge, Orden)! Diese Aktion kann NICHT rückgängig gemacht werden. Sicher?')) {
+            document.getElementById('resetAllDataBtn').addEventListener('click', async () => {
+                if (confirm('Sicher, dass ALLE gefangenen Pokémon und ALLE Routen-Stati zurückgesetzt werden sollen? Diese Aktion kann nicht rückgängig gemacht werden!')) {
+                    try {
+                        const response = await fetch('/api/reset_all_data', { method: 'POST' });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            showMessage(`Fehler beim Zurücksetzen aller Daten: ${errorData.error}`, 'error');
+                        } else {
+                            showMessage('Alle Daten erfolgreich zurückgesetzt!', 'success');
+                        }
+                    } catch (error) {
+                        console.error('Netzwerkfehler beim Zurücksetzen aller Daten.', error);
+                        showMessage('Netzwerkfehler beim Zurücksetzen aller Daten.', 'error');
+                    }
+                }
+            });
+
+            document.getElementById('openSummaryBtn').addEventListener('click', () => {
+                window.open('/summary', '_blank');
+            });
+
+            document.getElementById('resetDatabaseBtn').addEventListener('click', async () => {
+                if (confirm('WARNUNG: Dies wird die GESAMTE Datenbank zurücksetzen (Spieler, Routen, Fänge, Orden)! Diese Aktion kann NICHT rückgängig gemacht werden. Sicher?')) {
+                    try {
+                        const response = await fetch('/api/full_db_reset', { method: 'POST' });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            showMessage(`Fehler beim Zurücksetzen der Datenbank: ${errorData.error}`, 'error');
+                        } else {
+                            showMessage('Datenbank vollständig zurückgesetzt! Seite wird neu geladen.', 'success');
+                            setTimeout(() => { location.reload(); }, 1000);
+                        }
+                    } catch (error) {
+                        console.error('Netzwerkfehler beim Zurücksetzen der Datenbank:', error);
+                        showMessage('Netzwerkfehler beim Zurücksetzen der Datenbank.', 'error');
+                    }
+                }
+            });
+
+            document.getElementById('saveDbBtn').addEventListener('click', async () => {
+                const saveName = document.getElementById('saveDbInput').value.trim();
+                if (!saveName) {
+                    showMessage('Bitte gib einen Namen für den Spielstand ein.', 'info');
+                    return;
+                }
                 try {
-                    const response = await fetch('/api/full_db_reset', {
-                        method: 'POST'
+                    const response = await fetch('/api/database/save', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: saveName })
                     });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        showMessage(`Fehler beim Zurücksetzen der Datenbank: ${errorData.error}`, 'error');
-                    } else {
-                        showMessage('Datenbank vollständig zurückgesetzt! Seite wird neu geladen.', 'success');
-                        setTimeout(() => { location.reload(); }, 1000);
-                    }
+                    const result = await response.json();
+                    if (!response.ok) { throw new Error(result.error || 'Unbekannter Fehler'); }
+                    showMessage(result.message, 'success');
+                    document.getElementById('saveDbInput').value = '';
                 } catch (error) {
-                    console.error('Netzwerkfehler beim Zurücksetzen der Datenbank:', error);
-                    showMessage('Netzwerkfehler beim Zurücksetzen der Datenbank.', 'error');
+                    showMessage(`Fehler: ${error.message}`, 'error');
                 }
-            }
+            });
+
+            document.getElementById('loadDbBtn').addEventListener('click', async () => {
+                const select = document.getElementById('loadDbSelect');
+                const filename = select.value;
+                if (!filename || select.options[select.selectedIndex].disabled) {
+                    showMessage('Bitte wähle einen gültigen Spielstand zum Laden aus.', 'info');
+                    return;
+                }
+                if (confirm(`Spielstand "${select.options[select.selectedIndex].textContent}" laden? Alle ungespeicherten Änderungen gehen verloren!`)) {
+                    try {
+                        const response = await fetch('/api/database/load', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ filename: filename })
+                        });
+                        const result = await response.json();
+                        if (!response.ok) { throw new Error(result.error || 'Unbekannter Fehler'); }
+                        showMessage(result.message, 'success');
+                    } catch (error) {
+                        showMessage(`Fehler: ${error.message}`, 'error');
+                    }
+                }
+            });
+
+            document.getElementById('loadRoutesJsonBtn').addEventListener('click', () => loadJsonFileContent('routes.json', 'routesJsonContent'));
+            document.getElementById('saveRoutesJsonBtn').addEventListener('click', () => saveJsonFileContent('routes.json', 'routesJsonContent'));
+            document.getElementById('loadPokemonNamesJsonBtn').addEventListener('click', () => loadJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
+            document.getElementById('savePokemonNamesJsonBtn').addEventListener('click', () => saveJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
+            document.getElementById('loadLevelCapsJsonBtn').addEventListener('click', () => loadJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
+            document.getElementById('saveLevelCapsJsonBtn').addEventListener('click', () => saveJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
+            document.getElementById('reloadAppConfigsBtn').addEventListener('click', reloadAppConfigs);
         });
 
-
-        // --- SocketIO Event Listener (für Echtzeit-Updates) ---
+        // --- SocketIO Listeners ---
         socket.on('connect', () => {
             console.log('Verbunden mit dem Server über SocketIO!');
-            showMessage('Verbunden mit dem Server!', 'success');
-            fetchDataAndRender().then(initDragAndDrop);
+            fetchDataAndRender();
         });
 
         socket.on('disconnect', () => {
@@ -952,142 +936,23 @@ function renderGlobalOrders() {
             showMessage('Verbindung zum Server getrennt!', 'error');
         });
 
-        socket.on('player_added', (data) => {
-            console.log('Neuer Spieler hinzugefügt (SocketIO):', data);
-            fetchDataAndRender().then(initDragAndDrop);
+        socket.on('database_saved', () => {
+            fetchDataAndRender();
         });
 
-        socket.on('route_added', (data) => {
-            console.log('Neue Route hinzugefügt (SocketIO):', data);
-            fetchDataAndRender().then(initDragAndDrop);
-        });
-
-        socket.on('catch_updated', (data) => {
-            console.log('Fang aktualisiert (SocketIO):', data);
-            const existingCatch = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
-            if (existingCatch) {
-                existingCatch.pokemon_name = data.pokemon_name;
-            } else {
-                catches.push(data);
-            }
-            renderTable();
-            initDragAndDrop();
-        });
-
-        socket.on('global_order_toggled', (data) => {
-            console.log('Globaler Orden-Status aktualisiert (SocketIO):', data);
-            const existingOrderIndex = globalOrders.findIndex(o => o.order_number === data.order_number);
-            if (existingOrderIndex !== -1) {
-                globalOrders[existingOrderIndex].is_obtained = data.is_obtained;
-            } else {
-                globalOrders.push(data);
-            }
-            renderGlobalOrders();
-        });
-
-        socket.on('route_status_updated', (data) => {
-            console.log('Routenstatus aktualisiert (SocketIO):', data);
-            const routeToUpdate = routes.find(r => r.id === data.route_id);
-            if (routeToUpdate) {
-                routeToUpdate.status = data.status_text;
-            }
-            fetchDataAndRender().then(initDragAndDrop);
-        });
-        
-        // NEU: Event für Routen-Sortierung
-        socket.on('routes_reordered', (data) => {
-             console.log('Routen-Reihenfolge aktualisiert (SocketIO):', data);
-             fetchDataAndRender().then(initDragAndDrop);
-        });
-
-        socket.on('all_data_reset', () => {
-            console.log('Alle Daten zurückgesetzt (SocketIO)!');
-            fetchDataAndRender().then(initDragAndDrop);
-        });
-
-        socket.on('route_deleted', (data) => {
-            console.log(`Route ${data.route_id} entfernt (SocketIO)!`);
-            fetchDataAndRender().then(initDragAndDrop);
-        });
+        socket.on('player_added', () => fetchDataAndRender());
+        socket.on('route_added', () => fetchDataAndRender());
+        socket.on('route_deleted', () => fetchDataAndRender());
+        socket.on('routes_reordered', () => fetchDataAndRender());
+        socket.on('all_data_reset', () => fetchDataAndRender());
+        socket.on('catch_updated', () => fetchDataAndRender());
+        socket.on('global_order_toggled', () => fetchDataAndRender());
+        socket.on('route_status_updated', () => fetchDataAndRender());
 
         socket.on('full_db_reset', () => {
-            console.log('Datenbank vollständig zurückgesetzt (SocketIO)!');
-            showMessage('Datenbank vollständig zurückgesetzt von einem anderen Client! Seite wird neu geladen.', 'info');
-            setTimeout(() => { location.reload(); }, 1000);
+            showMessage('Datenbank wurde geändert. Seite wird neu geladen.', 'info');
+            setTimeout(() => { location.reload(); }, 1500);
         });
-
-        // Config Management Event Listeners
-        document.getElementById('loadRoutesJsonBtn').addEventListener('click', () => loadJsonFileContent('routes.json', 'routesJsonContent'));
-        document.getElementById('saveRoutesJsonBtn').addEventListener('click', () => saveJsonFileContent('routes.json', 'routesJsonContent'));
-        document.getElementById('loadPokemonNamesJsonBtn').addEventListener('click', () => loadJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
-        document.getElementById('savePokemonNamesJsonBtn').addEventListener('click', () => saveJsonFileContent('pokemon_names.json', 'pokemonNamesJsonContent'));
-        document.getElementById('loadLevelCapsJsonBtn').addEventListener('click', () => loadJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
-        document.getElementById('saveLevelCapsJsonBtn').addEventListener('click', () => saveJsonFileContent('level_caps.json', 'levelCapsJsonContent'));
-        document.getElementById('reloadAppConfigsBtn').addEventListener('click', reloadAppConfigs);
-
-        // Helper functions for config management
-        async function loadJsonFileContent(filename, textareaId) {
-            try {
-                const response = await fetch(`/api/config/${filename}`);
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
-                document.getElementById(textareaId).value = data.content;
-                showMessage(`Inhalt von ${filename} geladen.`, 'success');
-            } catch (error) {
-                console.error(`Fehler beim Laden von ${filename}:`, error);
-                showMessage(`Fehler beim Laden von ${filename}: ${error.message}`, 'error');
-            }
-        }
-
-        async function saveJsonFileContent(filename, textareaId) {
-            const content = document.getElementById(textareaId).value;
-            try {
-                // Versuche, den Inhalt zu parsen, um eine Validierung vor dem Senden zu haben
-                JSON.parse(content);
-
-                const response = await fetch(`/api/config/${filename}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: content })
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-                showMessage(`Inhalt von ${filename} gespeichert.`, 'success');
-            } catch (error) {
-                console.error(`Fehler beim Speichern von ${filename}:`, error);
-                if (error instanceof SyntaxError) {
-                    showMessage(`Fehler: Ungültiges JSON-Format in ${filename}. Bitte korrigieren.`, 'error');
-                } else {
-                    showMessage(`Fehler beim Speichern von ${filename}: ${error.message}`, 'error');
-                }
-            }
-        }
-
-        async function reloadAppConfigs() {
-            if (confirm('Sicher, dass die App-Konfigurationen aus den JSON-Dateien neu geladen werden sollen?')) {
-                try {
-                    const response = await fetch('/api/reload_configs', {
-                        method: 'POST'
-                    });
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                    }
-                    showMessage('App-Konfigurationen erfolgreich neu geladen.', 'success');
-                    // Da die Daten neu geladen wurden, wollen wir die Oberfläche aktualisieren
-                    fetchDataAndRender().then(initDragAndDrop);
-                } catch (error) {
-                    console.error('Fehler beim Neuladen der App-Konfigurationen:', error);
-                    showMessage(`Fehler beim Neuladen der App-Konfigurationen: ${error.message}`, 'error');
-                }
-            }
-        }
-
     </script>
 </body>
 </html>
