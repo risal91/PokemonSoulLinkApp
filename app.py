@@ -376,9 +376,7 @@ def save_database_state():
 
     dest_path = os.path.join(SAVES_DIR, f"{safe_filename}.db")
 
-    if os.path.exists(dest_path):
-        return jsonify({'error': 'Ein Spielstand mit diesem Namen existiert bereits.'}), 409
-
+    # Spielstand wird nun überschrieben, wenn der Name existiert
     try:
         shutil.copy(DB_PATH, dest_path)
         socketio.emit('database_saved')
