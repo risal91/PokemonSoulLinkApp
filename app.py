@@ -59,6 +59,36 @@ def reload_app_configs():
         f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data['ALL_POKEMON_NAMES'])} pokemon names.")
 
 
+def reload_level_caps_from_json():
+    """Liest level_caps.json und aktualisiert die LevelCap-Tabelle in der Datenbank."""
+    print("Reloading level caps from level_caps.json into database...")
+    session = get_db_session()
+    try:
+        level_caps_data = _load_json_data_internal('level_caps.json')
+        if not level_caps_data:
+            print("Warning: level_caps.json is empty or could not be loaded. No changes to level caps in DB.")
+            return
+
+        # Alte Level-Caps löschen, um Duplikate zu vermeiden
+        session.query(LevelCap).delete()
+
+        # Neue Level-Caps aus der JSON-Datei hinzufügen
+        for cap_data in level_caps_data:
+            new_cap = LevelCap(
+                name=cap_data.get('name'),
+                order_number=cap_data.get('order_number'),
+                max_level=cap_data.get('max_level'),
+                adjusted_level=cap_data.get('adjusted_level')
+            )
+            session.add(new_cap)
+        session.commit()
+        print(f"Successfully reloaded {len(level_caps_data)} level caps into the database.")
+    except Exception as e:
+        session.rollback()
+        print(f"ERROR: Could not reload level caps into database: {e}")
+    finally:
+        session.close()
+
 # Lade die Configs beim App-Start initial
 reload_app_configs()
 
@@ -452,20 +482,25 @@ def save_config_file(filename):
         json.loads(content)
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
+
+        # Nach dem Speichern die entsprechende Konfiguration neu laden
         if filename in ['routes.json', 'pokemon_names.json']:
             reload_app_configs()
+        elif filename == 'level_caps.json':
+            reload_level_caps_from_json() # Level-Caps in der DB aktualisieren
+
         socketio.emit('config_saved', {'filename': filename})
         return jsonify({'message': f'Datei {filename} erfolgreich gespeichert.'}), 200
     except json.JSONDecodeError as e:
         return jsonify({'error': f'Ungültiges JSON-Format in {filename}: {str(e)}'}), 400
     except Exception as e:
         return jsonify({'error': f'Fehler beim Schreiben von {filename}: {str(e)}'}), 500
-
-
+ 
 @app.route('/api/reload_configs', methods=['POST'])
 def reload_configs_api():
     """Trigger zum Neuladen der Konfigurationsdateien."""
     reload_app_configs()
+    reload_level_caps_from_json()  # Auch die Level-Caps aus der Datei neu in die DB laden
     socketio.emit('configs_reloaded')
     return jsonify({'message': 'App-Konfigurationen neu geladen.'}), 200
 
