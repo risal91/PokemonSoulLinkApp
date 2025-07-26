@@ -15,8 +15,8 @@
         .pokemon-icon-display { height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
         .pokemon-icon-display img { max-height: 100%; max-width: 100%; object-fit: contain; }
 
-        /* Style für die Namens-Box im Dark Mode */
-        .dark .pokemon-name-display {
+        /* NEU: Style für die Routen- und Namens-Boxen */
+        .dark .pokemon-name-display, .dark .route-name-display {
             background-color: #374151; /* gray-700 */
             border: 1px solid #4b5563; /* gray-600 */
             border-radius: 0.375rem;
@@ -28,6 +28,8 @@
             font-size: 0.875rem;
             color: #d1d5db; /* gray-300 */
         }
+        .gray-mode .pokemon-name-display, .gray-mode .route-name-display { background-color: #374151; border: 1px solid #4b5563; color: #d1d5db; padding: 0.25rem 0.5rem; border-radius: 0.375rem; min-height: 2.25rem; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; }
+        .green-mode .pokemon-name-display, .green-mode .route-name-display { background-color: #065f46; border: 1px solid #10b981; color: #d1fae5; padding: 0.25rem 0.5rem; border-radius: 0.375rem; min-height: 2.25rem; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; }
         
         /* --- STATUS-FARBEN --- */
         .status-no-catch, .status-no-catch td,
@@ -37,7 +39,7 @@
         .dark .status-no-catch, .dark .status-no-catch td { background-color: #1e3a8a !important; color: #bfdbfe !important; }
         .dark .status-death-link, .dark .status-death-link td { background-color: #92400e !important; color: #fde68a !important; }
         .dark .status-player-death, .dark .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
-        
+
         /* Gray & Green Mode Styles */
         .gray-mode body { background-color: #4b5563; color: #e5e7eb; }
         .gray-mode .container { background-color: #374151; }
@@ -47,7 +49,10 @@
         .gray-mode .level-cap-display-summary { background-color: #1f2937; color: #a7f3d0; border-color: #34d399; }
         .gray-mode th { background-color: #1f2937; border-color: #4b5563; color: #d1d5db; }
         .gray-mode td { border-color: #4b5563; }
-        .gray-mode .pokemon-name-display { background-color: #374151; border: 1px solid #4b5563; color: #d1d5db; }
+        .gray-mode select { background-color: #6b7280; color: #f3f4f6; border-color: #9ca3af; }
+        .gray-mode .status-no-catch, .gray-mode .status-no-catch td { background-color: #1e40af !important; color: #bfdbfe !important; }
+        .gray-mode .status-death-link, .gray-mode .status-death-link td { background-color: #7c2d12 !important; color: #fed7aa !important; }
+        .gray-mode .status-player-death, .gray-mode .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
 
         .green-mode body { background-color: #064e3b; color: #d1fae5; }
         .green-mode .container { background-color: #042f2e; }
@@ -57,7 +62,10 @@
         .green-mode .level-cap-display-summary { background-color: #10b981; color: #064e3b; border-color: #6ee7b7; }
         .green-mode th { background-color: #134e4a; border-color: #065f46; color: #a7f3d0; }
         .green-mode td { border-color: #065f46; }
-        .green-mode .pokemon-name-display { background-color: #065f46; border: 1px solid #10b981; color: #d1fae5; }
+        .green-mode select { background-color: #065f46; color: #d1fae5; border-color: #10b981; }
+        .green-mode .status-no-catch, .green-mode .status-no-catch td { background-color: #1e40af !important; color: #bfdbfe !important; }
+        .green-mode .status-death-link, .green-mode .status-death-link td { background-color: #7c2d12 !important; color: #fed7aa !important; }
+        .green-mode .status-player-death, .green-mode .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
@@ -99,15 +107,20 @@
         document.getElementById('zoomOutBtn').addEventListener('click', () => { currentZoom = Math.max(0.5, currentZoom - 0.1); applyZoom(); });
         document.getElementById('resetZoomBtn').addEventListener('click', () => { currentZoom = 1.0; applyZoom(); });
 
-        function createPokemonDisplay(cell, initialValue, playerId, routeId) {
-            cell.innerHTML = `
-                <div id="icon-container-${playerId}-${routeId}" class="pokemon-icon-display"></div>
-                <div id="pokemon-name-display-${playerId}-${routeId}" class="pokemon-name-display"></div>
-            `;
-            
-            const nameContainer = cell.querySelector(`#pokemon-name-display-${playerId}-${routeId}`);
-            const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
+        async function updateCatchOnServer(playerId, routeId, pokemonName) {
+            try { await fetch('/api/update_catch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName }) }); } catch (error) { console.error('Update fehlgeschlagen:', error); }
+        }
+        async function updateRouteStatusOnServer(routeId, status) {
+            try { await fetch('/api/update_route_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: routeId, status_text: status }) }); } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
+        }
 
+        function createPokemonDisplay(cell, initialValue) {
+            cell.innerHTML = `
+                <div class="pokemon-icon-display"></div>
+                <div class="pokemon-name-display"></div>
+            `;
+            const nameContainer = cell.querySelector(`.pokemon-name-display`);
+            const iconContainer = cell.querySelector(`.pokemon-icon-display`);
             const updateDisplay = (pokemonName) => {
                 iconContainer.innerHTML = '';
                 nameContainer.textContent = pokemonName || '-';
@@ -118,8 +131,24 @@
                     }
                 }
             };
-            
             updateDisplay(initialValue);
+        }
+        
+        function createStatusDropdownSummary(cell, initialValue, routeId) {
+            const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
+            const select = document.createElement('select');
+            select.className = 'w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600';
+            select.innerHTML = '<option value="">-</option>';
+            statusOptions.forEach(status => {
+                if (status === "") return;
+                const option = document.createElement('option');
+                option.value = status;
+                option.textContent = status;
+                select.appendChild(option);
+            });
+            select.value = initialValue || "";
+            select.addEventListener('change', () => updateRouteStatusOnServer(routeId, select.value));
+            cell.appendChild(select);
         }
 
         async function fetchDataAndRenderSummary() {
@@ -127,14 +156,11 @@
                 const response = await fetch('/api/data');
                 if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                 const data = await response.json();
-                
                 players = data.players; routes = data.routes; catches = data.catches;
                 globalOrders = data.global_orders; levelCaps = data.level_caps; 
                 allPokemonData = data.all_pokemon_data || [];
-
                 renderSummaryTable();
                 renderSummaryLevelCap();
-                
                 document.getElementById('noDataMessage').classList.toggle('hidden', players.length > 0 || routes.length > 0);
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
@@ -148,29 +174,40 @@
             container.innerHTML = '';
             const table = document.createElement('table');
             table.className = 'min-w-full bg-white border-collapse dark:bg-gray-800';
-
-            const headers = ['Route', ...players.map(p => p.name)];
+            const headers = ['Route', ...players.map(p => p.name), 'Status'];
             let headerHTML = headers.map(text => `<th class="py-2 px-3 border-b-2 border-x border-gray-300 dark:border-gray-600 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase">${text}</th>`).join('');
-            
             table.innerHTML = `<thead class="bg-blue-100 dark:bg-blue-900/50"><tr>${headerHTML}</tr></thead><tbody></tbody>`;
             
             const tbody = table.querySelector('tbody');
             routes.forEach(route => {
                 const row = tbody.insertRow();
                 row.id = `summary-route-row-${route.id}`;
-                
+                updateRouteRowColor(row, route.status);
+
                 const routeCell = row.insertCell();
                 routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 dark:border-gray-600 font-medium';
-                routeCell.textContent = route.name;
+                // NEU: Routen-Name in eine Box packen
+                routeCell.innerHTML = `<div class="route-name-display">${route.name}</div>`;
 
                 players.forEach(player => {
                     const playerCell = row.insertCell();
                     playerCell.className = 'py-1 px-2 border-b border-x border-gray-300 dark:border-gray-600 w-40 pokemon-cell';
                     const catchedPoke = catches.find(c => c.player_id === player.id && c.route_id === route.id);
-                    createPokemonDisplay(playerCell, catchedPoke ? catchedPoke.pokemon_name : null, player.id, route.id);
+                    createPokemonDisplay(playerCell, catchedPoke ? catchedPoke.pokemon_name : null);
                 });
+                
+                const statusCell = row.insertCell();
+                statusCell.className = 'py-1 px-2 border-b border-x border-gray-300 dark:border-gray-600';
+                createStatusDropdownSummary(statusCell, route.status, route.id);
             });
             container.appendChild(table);
+        }
+
+        function updateRouteRowColor(row, status) {
+            row.className = '';
+            if (status === "No Catch") { row.classList.add('status-no-catch'); } 
+            else if (status === "Death Link") { row.classList.add('status-death-link'); }
+            else if (status && status.startsWith("Death (")) { row.classList.add('status-player-death'); }
         }
 
         function renderSummaryLevelCap() {
