@@ -15,29 +15,17 @@
         .pokemon-icon-display { height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
         .pokemon-icon-display img { max-height: 100%; max-width: 100%; object-fit: contain; }
 
-        /* Style für die Text-Boxen (nur in dunklen Modi aktiv) */
-        .name-display {
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-            text-align: center;
-            font-weight: 500;
-        }
-        .dark .name-display,
-        .gray-mode .name-display,
-        .green-mode .name-display {
-            background-color: #6b7280; /* Deine Wunschfarbe */
-            color: white;
-        }
-        
-        /* STATUS-FARBEN */
+        /* NEUE STATUS-KLASSEN FÜR LICHT-MODUS */
         .status-no-catch, .status-no-catch td,
         .status-death-link, .status-death-link td { background-color: #ffedd5 !important; }
         .status-player-death, .status-player-death td { background-color: #fee2e2 !important; }
 
-        .dark .status-no-catch, .dark .status-no-catch td { background-color: #1e3a8a !important; color: #bfdbfe !important; }
-        .dark .status-death-link, .dark .status-death-link td { background-color: #92400e !important; color: #fde68a !important; }
+        /* DARK MODE - SPEZIFISCHE STATUS-FARBEN */
+        .dark .status-no-catch, .dark .status-no-catch td { background-color: #1e3a8a !important; color: #bfdbfe !important; } /* Dunkelblau */
+        .dark .status-death-link, .dark .status-death-link td { background-color: #92400e !important; color: #fde68a !important; } /* Dunkelorange */
         .dark .status-player-death, .dark .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
 
+        /* GRAY MODE STYLES */
         .gray-mode body { background-color: #4b5563; color: #e5e7eb; }
         .gray-mode .container { background-color: #374151; }
         .gray-mode h1 { color: #d1d5db; }
@@ -51,6 +39,7 @@
         .gray-mode .status-death-link, .gray-mode .status-death-link td { background-color: #7c2d12 !important; color: #fed7aa !important; }
         .gray-mode .status-player-death, .gray-mode .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
 
+        /* NEU: GREEN MODE STYLES */
         .green-mode body { background-color: #064e3b; color: #d1fae5; }
         .green-mode .container { background-color: #042f2e; }
         .green-mode h1 { color: #a7f3d0; }
@@ -74,6 +63,7 @@
                 <button id="zoomOutBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">-</button>
                 <button id="zoomInBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">+</button>
                 <button id="resetZoomBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">Reset</button>
+                
                 <button id="themeToggleBtn" class="bg-gray-200 hover:bg-gray-300 font-bold p-2 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">
                     <svg id="theme-icon-light" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     <svg id="theme-icon-gray" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a4 4 0 014-4h10a4 4 0 014 4v12a4 4 0 01-4 4H7z" /></svg>
@@ -104,20 +94,30 @@
         document.getElementById('zoomOutBtn').addEventListener('click', () => { currentZoom = Math.max(0.5, currentZoom - 0.1); applyZoom(); });
         document.getElementById('resetZoomBtn').addEventListener('click', () => { currentZoom = 1.0; applyZoom(); });
 
+        async function updateCatchOnServer(playerId, routeId, pokemonName) {
+            try { await fetch('/api/update_catch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName }) }); } catch (error) { console.error('Update fehlgeschlagen:', error); }
+        }
         async function updateRouteStatusOnServer(routeId, status) {
             try { await fetch('/api/update_route_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: routeId, status_text: status }) }); } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
         }
 
-        function createPokemonDisplay(cell, initialValue) {
+        function createPokemonDropdownSummary(cell, initialValue, playerId, routeId) {
             cell.innerHTML = `
-                <div class="pokemon-icon-display"></div>
-                <div class="name-display"></div>
+                <div id="icon-container-${playerId}-${routeId}" class="pokemon-icon-display"></div>
+                <select id="pokemon-select-${playerId}-${routeId}" class="w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600"></select>
             `;
-            const nameContainer = cell.querySelector(`.name-display`);
-            const iconContainer = cell.querySelector(`.pokemon-icon-display`);
-            const updateDisplay = (pokemonName) => {
+            const select = cell.querySelector(`#pokemon-select-${playerId}-${routeId}`);
+            const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
+            select.innerHTML = '<option value="">-</option>';
+            allPokemonData.forEach(p => {
+                const option = document.createElement('option');
+                option.value = p.name;
+                option.textContent = p.name;
+                select.appendChild(option);
+            });
+            const updateSelection = (pokemonName) => {
+                select.value = pokemonName || "";
                 iconContainer.innerHTML = '';
-                nameContainer.textContent = pokemonName || '-';
                 if (pokemonName) {
                     const pokemon = allPokemonData.find(p => p.name === pokemonName);
                     if (pokemon) {
@@ -125,7 +125,11 @@
                     }
                 }
             };
-            updateDisplay(initialValue);
+            select.addEventListener('change', () => {
+                updateSelection(select.value);
+                updateCatchOnServer(playerId, routeId, select.value);
+            });
+            updateSelection(initialValue);
         }
         
         function createStatusDropdownSummary(cell, initialValue, routeId) {
@@ -177,18 +181,17 @@
                 const row = tbody.insertRow();
                 row.id = `summary-route-row-${route.id}`;
                 updateRouteRowColor(row, route.status);
-
                 const routeCell = row.insertCell();
-                routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 dark:border-gray-600 font-medium align-middle';
-                routeCell.innerHTML = `<div class="name-display">${route.name}</div>`;
+                routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 dark:border-gray-600 font-medium';
+                routeCell.textContent = route.name;
 
                 players.forEach(player => {
                     const playerCell = row.insertCell();
                     playerCell.className = 'py-1 px-2 border-b border-x border-gray-300 dark:border-gray-600 w-40 pokemon-cell';
                     const catchedPoke = catches.find(c => c.player_id === player.id && c.route_id === route.id);
-                    createPokemonDisplay(playerCell, catchedPoke ? catchedPoke.pokemon_name : null);
+                    createPokemonDropdownSummary(playerCell, catchedPoke ? catchedPoke.pokemon_name : null, player.id, route.id);
                 });
-                
+
                 const statusCell = row.insertCell();
                 statusCell.className = 'py-1 px-2 border-b border-x border-gray-300 dark:border-gray-600';
                 createStatusDropdownSummary(statusCell, route.status, route.id);
@@ -196,8 +199,9 @@
             container.appendChild(table);
         }
 
+        // KORRIGIERT: Wendet spezifische Klassen für jeden Status an
         function updateRouteRowColor(row, status) {
-            row.className = '';
+            row.className = ''; // Setzt alle Klassen zurück
             if (status === "No Catch") { row.classList.add('status-no-catch'); } 
             else if (status === "Death Link") { row.classList.add('status-death-link'); }
             else if (status && status.startsWith("Death (")) { row.classList.add('status-player-death'); }
@@ -222,14 +226,15 @@
             }
         }
         
+        // --- Theme (Dark/Gray/Green Mode) Umschalter ---
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const themeIcons = {
             light: document.getElementById('theme-icon-light'),
             gray: document.getElementById('theme-icon-gray'),
             dark: document.getElementById('theme-icon-dark'),
-            green: document.getElementById('theme-icon-green'),
+            green: document.getElementById('theme-icon-green'), // NEU
         };
-        const themes = ['light', 'gray', 'dark', 'green'];
+        const themes = ['light', 'gray', 'dark', 'green']; // NEU
         let currentThemeIndex = 0;
 
         const applyTheme = (theme) => {
@@ -243,7 +248,7 @@
             } else if (theme === 'gray') {
                 html.classList.add('gray-mode');
                 themeIcons.gray.classList.remove('hidden');
-            } else if (theme === 'green') {
+            } else if (theme === 'green') { // NEU
                 html.classList.add('green-mode');
                 themeIcons.green.classList.remove('hidden');
             } else {
@@ -263,6 +268,7 @@
             applyTheme(savedTheme);
         }
 
+        // --- Socket.IO Events ---
         socket.on('connect', () => { console.log('Verbunden (Kurzansicht)'); fetchDataAndRenderSummary(); });
         socket.on('disconnect', () => console.log('Verbindung getrennt (Kurzansicht)'));
         ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'global_order_toggled', 'catch_updated', 'route_status_updated'].forEach(event => {
