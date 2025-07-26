@@ -15,7 +15,17 @@
         .pokemon-icon-display { height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
         .pokemon-icon-display img { max-height: 100%; max-width: 100%; object-fit: contain; }
 
-        /* NEU: Gray Mode Styles */
+        /* NEUE STATUS-KLASSEN FÜR LICHT-MODUS */
+        .status-no-catch, .status-no-catch td,
+        .status-death-link, .status-death-link td { background-color: #ffedd5 !important; }
+        .status-player-death, .status-player-death td { background-color: #fee2e2 !important; }
+
+        /* DARK MODE - SPEZIFISCHE STATUS-FARBEN */
+        .dark .status-no-catch, .dark .status-no-catch td { background-color: #1e3a8a !important; color: #bfdbfe !important; } /* Dunkelblau */
+        .dark .status-death-link, .dark .status-death-link td { background-color: #92400e !important; color: #fde68a !important; } /* Dunkelorange */
+        .dark .status-player-death, .dark .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
+
+        /* GRAY MODE STYLES */
         .gray-mode body { background-color: #4b5563; color: #e5e7eb; }
         .gray-mode .container { background-color: #374151; }
         .gray-mode h1 { color: #d1d5db; }
@@ -25,8 +35,23 @@
         .gray-mode th { background-color: #1f2937; border-color: #4b5563; color: #d1d5db; }
         .gray-mode td { border-color: #4b5563; }
         .gray-mode select { background-color: #6b7280; color: #f3f4f6; border-color: #9ca3af; }
-        .gray-mode .route-status-orange, .gray-mode .route-status-orange td { background-color: #7c2d12 !important; color: #fed7aa !important; }
-        .gray-mode .route-status-red, .gray-mode .route-status-red td { background-color: #991b1b !important; color: #fecaca !important; }
+        .gray-mode .status-no-catch, .gray-mode .status-no-catch td { background-color: #1e40af !important; color: #bfdbfe !important; }
+        .gray-mode .status-death-link, .gray-mode .status-death-link td { background-color: #7c2d12 !important; color: #fed7aa !important; }
+        .gray-mode .status-player-death, .gray-mode .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
+
+        /* NEU: GREEN MODE STYLES */
+        .green-mode body { background-color: #064e3b; color: #d1fae5; }
+        .green-mode .container { background-color: #042f2e; }
+        .green-mode h1 { color: #a7f3d0; }
+        .green-mode nav a, .green-mode nav button { background-color: #065f46; color: #d1fae5; }
+        .green-mode nav a:hover, .green-mode nav button:hover { background-color: #047857; }
+        .green-mode .level-cap-display-summary { background-color: #10b981; color: #064e3b; border-color: #6ee7b7; }
+        .green-mode th { background-color: #134e4a; border-color: #065f46; color: #a7f3d0; }
+        .green-mode td { border-color: #065f46; }
+        .green-mode select { background-color: #065f46; color: #d1fae5; border-color: #10b981; }
+        .green-mode .status-no-catch, .green-mode .status-no-catch td { background-color: #1e40af !important; color: #bfdbfe !important; }
+        .green-mode .status-death-link, .green-mode .status-death-link td { background-color: #7c2d12 !important; color: #fed7aa !important; }
+        .green-mode .status-player-death, .green-mode .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
@@ -43,6 +68,7 @@
                     <svg id="theme-icon-light" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                     <svg id="theme-icon-gray" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a4 4 0 014-4h10a4 4 0 014 4v12a4 4 0 01-4 4H7z" /></svg>
                     <svg id="theme-icon-dark" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                    <svg id="theme-icon-green" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 </button>
             </nav>
             <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-8 rounded-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
@@ -82,7 +108,6 @@
             `;
             const select = cell.querySelector(`#pokemon-select-${playerId}-${routeId}`);
             const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
-
             select.innerHTML = '<option value="">-</option>';
             allPokemonData.forEach(p => {
                 const option = document.createElement('option');
@@ -90,7 +115,6 @@
                 option.textContent = p.name;
                 select.appendChild(option);
             });
-
             const updateSelection = (pokemonName) => {
                 select.value = pokemonName || "";
                 iconContainer.innerHTML = '';
@@ -101,12 +125,10 @@
                     }
                 }
             };
-
             select.addEventListener('change', () => {
                 updateSelection(select.value);
                 updateCatchOnServer(playerId, routeId, select.value);
             });
-            
             updateSelection(initialValue);
         }
         
@@ -114,7 +136,6 @@
             const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
             const select = document.createElement('select');
             select.className = 'w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600';
-
             select.innerHTML = '<option value="">-</option>';
             statusOptions.forEach(status => {
                 if (status === "") return;
@@ -178,10 +199,12 @@
             container.appendChild(table);
         }
 
+        // KORRIGIERT: Wendet spezifische Klassen für jeden Status an
         function updateRouteRowColor(row, status) {
-            row.classList.remove('route-status-orange', 'route-status-red');
-            if (status === "Death Link" || status === "No Catch") { row.classList.add('route-status-orange'); } 
-            else if (status && status.startsWith("Death (")) { row.classList.add('route-status-red'); }
+            row.className = ''; // Setzt alle Klassen zurück
+            if (status === "No Catch") { row.classList.add('status-no-catch'); } 
+            else if (status === "Death Link") { row.classList.add('status-death-link'); }
+            else if (status && status.startsWith("Death (")) { row.classList.add('status-player-death'); }
         }
 
         function renderSummaryLevelCap() {
@@ -203,19 +226,20 @@
             }
         }
         
-        // NEU: Theme (Dark/Gray Mode) Umschalter
+        // --- Theme (Dark/Gray/Green Mode) Umschalter ---
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const themeIcons = {
             light: document.getElementById('theme-icon-light'),
             gray: document.getElementById('theme-icon-gray'),
             dark: document.getElementById('theme-icon-dark'),
+            green: document.getElementById('theme-icon-green'), // NEU
         };
-        const themes = ['light', 'gray', 'dark'];
+        const themes = ['light', 'gray', 'dark', 'green']; // NEU
         let currentThemeIndex = 0;
 
         const applyTheme = (theme) => {
             const html = document.documentElement;
-            html.classList.remove('dark', 'gray-mode');
+            html.classList.remove('dark', 'gray-mode', 'green-mode');
             Object.values(themeIcons).forEach(icon => icon.classList.add('hidden'));
 
             if (theme === 'dark') {
@@ -224,6 +248,9 @@
             } else if (theme === 'gray') {
                 html.classList.add('gray-mode');
                 themeIcons.gray.classList.remove('hidden');
+            } else if (theme === 'green') { // NEU
+                html.classList.add('green-mode');
+                themeIcons.green.classList.remove('hidden');
             } else {
                 themeIcons.light.classList.remove('hidden');
             }
@@ -235,14 +262,13 @@
             applyTheme(themes[currentThemeIndex]);
         });
 
-        // Beim Laden der Seite das gespeicherte Theme anwenden
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme && themes.includes(savedTheme)) {
             currentThemeIndex = themes.indexOf(savedTheme);
             applyTheme(savedTheme);
         }
 
-        // Socket.IO Events
+        // --- Socket.IO Events ---
         socket.on('connect', () => { console.log('Verbunden (Kurzansicht)'); fetchDataAndRenderSummary(); });
         socket.on('disconnect', () => console.log('Verbindung getrennt (Kurzansicht)'));
         ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'global_order_toggled', 'catch_updated', 'route_status_updated'].forEach(event => {
