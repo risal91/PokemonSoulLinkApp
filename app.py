@@ -55,13 +55,15 @@ def reload_app_configs():
     print("Reloading application configurations...")
     _app_config_data["ALL_ROUTES"] = [item['name'] for item in _load_json_data_internal('routes.json')]
     
-    # NEU: Lädt die komplette Liste von Pokémon-Objekten (ID und Name)
-    _app_config_data["ALL_POKEMON_DATA"] = _load_json_data_internal('pokemon_names.json')
-    # ALT: Extrahiert nur die Namen für die index.html, damit diese nicht kaputt geht
-    _app_config_data["ALL_POKEMON_NAMES"] = [p['name'] for p in _app_config_data.get("ALL_POKEMON_DATA", [])]
+    # Lädt die komplette Liste von Pokémon-Objekten (ID und Name)
+    all_pokemon_data = _load_json_data_internal('pokemon_names.json')
+    _app_config_data["ALL_POKEMON_DATA"] = all_pokemon_data
+    
+    # Extrahiert nur die Namen für die index.html, damit diese weiterhin funktioniert
+    _app_config_data["ALL_POKEMON_NAMES"] = [p['name'] for p in all_pokemon_data if 'name' in p]
     
     print(
-        f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data['ALL_POKEMON_DATA'])} pokemon data entries.")
+        f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data.get('ALL_POKEMON_DATA', []))} pokemon data entries.")
 
 def reload_level_caps_from_json():
     """Liest level_caps.json und aktualisiert die LevelCap-Tabelle in der Datenbank."""
@@ -152,15 +154,16 @@ def get_all_data():
     except Exception as e:
         print(f"Fehler beim Lesen des Save-Verzeichnisses: {e}")
 
+    # Die .get() Methode verhindert Abstürze, falls ein Schlüssel fehlt
     return jsonify({
         'players': players_data,
         'routes': routes_data,
         'catches': catches_data,
         'global_orders': global_orders_data,
         'level_caps': level_caps_data,
-        'all_pokemon_names': _app_config_data["ALL_POKEMON_NAMES"], # Für index.html
-        'all_pokemon_data': _app_config_data.get("ALL_POKEMON_DATA", []), # NEU für summary.html
-        'all_route_names': _app_config_data["ALL_ROUTES"],
+        'all_pokemon_names': _app_config_data.get("ALL_POKEMON_NAMES", []),   # Für index.html
+        'all_pokemon_data': _app_config_data.get("ALL_POKEMON_DATA", []),    # NEU für summary.html
+        'all_route_names': _app_config_data.get("ALL_ROUTES", []),
         'saved_databases': saved_dbs,
     })
 
