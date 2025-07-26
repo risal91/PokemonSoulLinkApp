@@ -8,126 +8,38 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8;
-            color: #2d3748;
-        }
-        .main-content-wrapper { /* Wrapper für Zoom */
-            transform-origin: top center; /* Skaliert von oben/Mitte */
-        }
-        .container {
-            max-width: 1400px; /* Breiter für das neue Layout */
-        }
-        .level-cap-display-summary {
-            background-color: #d1fae5;
-            color: #065f46;
-            border: 1px solid #34d399;
-        }
-        /* CSS-KLASSEN FÜR ROUTEN-STATUS */
-        .route-status-orange {
-            background-color: #ffedd5 !important;
-        }
-        .route-status-orange td { /* Stelle sicher, dass die Farbe auch in den Zellen ist */
-             background-color: #ffedd5 !important;
-        }
-
-        .route-status-red {
-            background-color: #fee2e2 !important;
-        }
-        .route-status-red td {
-             background-color: #fee2e2 !important;
-        }
-
-        /* Custom Dropdown Styles */
-        .custom-select-container {
-            position: relative;
-            width: 100%;
-        }
-        .custom-select-input {
-            width: 100%;
-            padding: 0.4rem 0.6rem;
-            border: 1px solid #ccc;
-            border-radius: 0.375rem;
-            background-color: #fff;
-            cursor: pointer;
-            text-align: left;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.875rem;
-        }
-        .custom-select-input::after {
-            content: '▼';
-            font-size: 0.6rem;
-            color: #4a5568;
-            margin-left: 0.25rem;
-        }
-        .custom-select-options {
-            position: absolute;
-            width: 100%;
-            background-color: #fff;
-            border: 1px solid #ccc;
-            border-radius: 0.375rem;
-            max-height: 200px;
-            overflow-y: auto;
-            z-index: 1000;
-            margin-top: 0.25rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            display: none;
-        }
-        .custom-select-options.active {
-            display: block;
-        }
-        .custom-select-option {
-            padding: 0.4rem 0.6rem;
-            cursor: pointer;
-            line-height: 1.5;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            font-size: 0.875rem;
-        }
-        .custom-select-option:hover {
-            background-color: #f0f4f8;
-        }
-        .custom-select-option.selected {
-            background-color: #e0e7ff;
-            font-weight: bold;
-        }
-         .custom-select-search {
-            width: calc(100% - 1rem);
-            padding: 0.4rem;
-            margin: 0.5rem;
-            border: 1px solid #ccc;
-            border-radius: 0.25rem;
-            box-sizing: border-box;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; color: #2d3748; }
+        .main-content-wrapper { transform-origin: top center; }
+        .container { max-width: 1400px; }
+        .level-cap-display-summary { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
+        .route-status-orange, .route-status-orange td { background-color: #ffedd5 !important; }
+        .route-status-red, .route-status-red td { background-color: #fee2e2 !important; }
+        .custom-select-container { position: relative; width: 100%; }
+        .custom-select-input { width: 100%; padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 0.375rem; background-color: #fff; cursor: pointer; text-align: left; position: relative; display: flex; align-items: center; justify-content: center; font-size: 0.875rem; min-height: 2.25rem; /* Feste Höhe für Konsistenz */ }
+        .custom-select-input::after { content: '▼'; font-size: 0.6rem; color: #4a5568; position: absolute; right: 0.5rem; }
+        .custom-select-options { position: absolute; width: 100%; background-color: #fff; border: 1px solid #ccc; border-radius: 0.375rem; max-height: 200px; overflow-y: auto; z-index: 1000; margin-top: 0.25rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); display: none; }
+        .custom-select-options.active { display: block; }
+        .custom-select-option { padding: 0.4rem 0.6rem; cursor: pointer; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.875rem; }
+        .custom-select-option:hover { background-color: #f0f4f8; }
+        .custom-select-option.selected { background-color: #e0e7ff; font-weight: bold; }
+        .custom-select-search { width: calc(100% - 1rem); padding: 0.4rem; margin: 0.5rem; border: 1px solid #ccc; border-radius: 0.25rem; box-sizing: border-box; }
     </style>
 </head>
 <body class="bg-gray-100 p-6">
     <div class="main-content-wrapper">
         <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
             <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Soul Link Kurzansicht</h1>
-
             <nav class="text-center mb-6 flex justify-center items-center gap-4">
                 <a href="/" class="text-blue-600 hover:text-blue-800 text-lg font-medium px-4 py-2 rounded-md bg-blue-100 hover:bg-blue-200 transition duration-300">Zur Hauptansicht</a>
                 <button id="zoomOutBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">- Zoom</button>
                 <button id="zoomInBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">+ Zoom</button>
                 <button id="resetZoomBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-md transition duration-300 ease-in-out">Reset Zoom</button>
             </nav>
-
             <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold text-green-700 p-4 mb-8 bg-green-100 rounded-md shadow-inner hidden level-cap-display-summary">
                 Nächstes Level Cap: <span id="summaryCurrentLevelCapMax" class="text-green-800"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted" class="text-green-800"></span>)
             </div>
-            
-            <div id="summaryTableContainer" class="overflow-x-auto">
-                </div>
-
-            <div id="noDataMessage" class="hidden text-center text-gray-500 mt-10">
-                Lade Daten... Wenn dies zu lange dauert, sind möglicherweise keine Spieler oder Routen vorhanden, oder der Server ist nicht erreichbar.
-            </div>
+            <div id="summaryTableContainer" class="overflow-x-auto"></div>
+            <div id="noDataMessage" class="hidden text-center text-gray-500 mt-10">Lade Daten...</div>
         </div>
     </div>
 
@@ -138,7 +50,7 @@
         let catches = [];
         let globalOrders = [];
         let levelCaps = [];
-        let allPokemonNames = [];
+        let allPokemonData = []; // NEU: Speichert die komplette Liste {id, name}
         let currentZoom = 1.0;
         const zoomStep = 0.1;
         const mainContentWrapper = document.querySelector('.main-content-wrapper');
@@ -149,7 +61,6 @@
         const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
         const summaryCurrentLevelCapAdjusted = document.getElementById('summaryCurrentLevelCapAdjusted');
 
-        // --- Zoom Funktionen ---
         function applyZoom() {
             mainContentWrapper.style.transform = `scale(${currentZoom})`;
             mainContentWrapper.style.width = `${100 / currentZoom}%`;
@@ -159,23 +70,18 @@
         document.getElementById('zoomOutBtn').addEventListener('click', () => { currentZoom = Math.max(0.5, currentZoom - zoomStep); applyZoom(); });
         document.getElementById('resetZoomBtn').addEventListener('click', () => { currentZoom = 1.0; applyZoom(); });
 
-        // --- Custom Dropdown Logic ---
         function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
-            const container = containerElement; const input = inputElement; const optionsDiv = optionsElement; const optionsList = optionsListElement;
             const searchInput = hasSearch ? optionsDiv.querySelector('.custom-select-search') : null;
-            if (!container || !input || !optionsDiv || !optionsList) { console.error("Dropdown-Elemente nicht gefunden."); return null; }
             let selectedValue = null; let currentItems = initialItemsArray;
             function renderOptions(filter = '') {
                 optionsList.innerHTML = '';
                 const filteredItems = currentItems.filter(item => item.toLowerCase().includes(filter.toLowerCase())).sort();
-                if (filteredItems.length === 0) {
-                    const noResult = document.createElement('div'); noResult.className = 'custom-select-option text-gray-500 italic'; noResult.textContent = 'Keine Ergebnisse.'; optionsList.appendChild(noResult); return;
-                }
+                if (filteredItems.length === 0) { optionsList.innerHTML = '<div class="custom-select-option text-gray-500 italic">Nichts gefunden.</div>'; return; }
                 filteredItems.forEach(item => {
                     const option = document.createElement('div'); option.className = 'custom-select-option'; if (item === selectedValue) { option.classList.add('selected'); }
                     option.textContent = item; option.dataset.value = item;
                     option.addEventListener('click', (e) => {
-                        e.stopPropagation(); input.textContent = item; selectedValue = item; optionsDiv.classList.remove('active');
+                        e.stopPropagation(); selectedValue = item; optionsDiv.classList.remove('active');
                         if (onSelectCallback) { onSelectCallback(item); }
                     });
                     optionsList.appendChild(option);
@@ -183,45 +89,76 @@
             }
             input.addEventListener('click', (e) => {
                 e.stopPropagation();
-                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => { if (openDiv !== optionsDiv) { openDiv.classList.remove('active'); } });
-                optionsDiv.classList.toggle('active');
+                document.querySelectorAll('.custom-select-options.active').forEach(openDiv => { if (openDiv !== optionsElement) { openDiv.classList.remove('active'); } });
+                optionsElement.classList.toggle('active');
                 if (searchInput) { searchInput.value = ''; renderOptions(''); searchInput.focus(); } else { renderOptions(''); }
             });
-            if (searchInput) { searchInput.addEventListener('input', (e) => { renderOptions(e.target.value); }); searchInput.addEventListener('click', (e) => e.stopPropagation()); }
-            document.addEventListener('click', () => { optionsDiv.classList.remove('active'); });
-            input.textContent = searchPlaceholder; renderOptions();
+            if (searchInput) { searchInput.addEventListener('input', (e) => renderOptions(e.target.value)); searchInput.addEventListener('click', (e) => e.stopPropagation()); }
+            document.addEventListener('click', () => optionsElement.classList.remove('active'));
+            renderOptions();
             return {
                 setSelectedValue: (value) => {
-                    selectedValue = value; input.textContent = value || searchPlaceholder;
-                    optionsList.querySelectorAll('.custom-select-option').forEach(opt => { opt.classList.toggle('selected', opt.dataset.value === value); });
-                },
-                updateItems: (newItems) => { currentItems = newItems; renderOptions(searchInput ? searchInput.value : ''); }
+                    selectedValue = value;
+                    if (onSelectCallback) { onSelectCallback(value); }
+                }
             };
         }
 
-        // Dropdown Erstellungs-Funktionen
+        // NEU: Diese Funktion wurde stark überarbeitet
         function createPokemonDropdownSummary(parentElement, initialValue, playerId, routeId) {
-            const container = document.createElement('div'); container.id = `pokemon-dropdown-summary-container-${playerId}-${routeId}`; container.className = 'custom-select-container';
-            const input = document.createElement('div'); input.id = `pokemon-input-summary-${playerId}-${routeId}`; input.className = 'custom-select-input text-sm'; input.tabIndex = 0; container.appendChild(input);
-            const optionsDiv = document.createElement('div'); optionsDiv.className = 'custom-select-options'; container.appendChild(optionsDiv);
+            const allPokemonNames = allPokemonData.map(p => p.name);
+            const container = document.createElement('div'); container.className = 'custom-select-container';
+            const input = document.createElement('div'); input.className = 'custom-select-input'; container.appendChild(input);
+            const optionsDiv = document.createElement('div'); optionsDiv.className = 'custom-select-options';
             const searchInput = document.createElement('input'); searchInput.type = 'text'; searchInput.className = 'custom-select-search'; searchInput.placeholder = 'Suche...'; optionsDiv.appendChild(searchInput);
             const optionsList = document.createElement('div'); optionsList.className = 'options-list'; optionsDiv.appendChild(optionsList);
+            container.appendChild(optionsDiv);
             parentElement.appendChild(container);
-            const dropdown = setupCustomDropdown(container, input, optionsDiv, optionsList, 'Pokémon', allPokemonNames, (name) => updateCatchOnServer(playerId, routeId, name), true);
+
+            const updateDisplay = (pokemonName) => {
+                input.innerHTML = ''; // Leert das Feld
+                if (pokemonName) {
+                    const pokemon = allPokemonData.find(p => p.name === pokemonName);
+                    if (pokemon) {
+                        const img = document.createElement('img');
+                        img.src = `/static/icons/${pokemon.id}.png`;
+                        img.alt = pokemon.name;
+                        img.className = 'h-6 w-6 object-contain mx-auto';
+                        img.title = pokemon.name;
+                        input.appendChild(img);
+                    } else {
+                        input.textContent = pokemonName.substring(0, 10); // Fallback
+                    }
+                } else {
+                    input.innerHTML = '&nbsp;'; // Platzhalter, damit die Höhe bleibt
+                }
+            };
+            
+            const dropdown = setupCustomDropdown(container, input, optionsDiv, optionsList, 'Pokémon', allPokemonNames, (name) => {
+                updateDisplay(name);
+                updateCatchOnServer(playerId, routeId, name);
+            }, true);
+
             if (dropdown) dropdown.setSelectedValue(initialValue);
         }
+
+        // Diese Funktion ist fast unverändert, nutzt nur den neuen Callback
         function createStatusDropdownSummary(parentElement, initialStatus, routeId) {
             const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
-            const container = document.createElement('div'); container.id = `status-dropdown-summary-container-${routeId}`; container.className = 'custom-select-container';
-            const input = document.createElement('div'); input.id = `status-dropdown-summary-input-${routeId}`; input.className = 'custom-select-input text-sm'; input.tabIndex = 0; container.appendChild(input);
-            const optionsDiv = document.createElement('div'); optionsDiv.className = 'custom-select-options'; container.appendChild(optionsDiv);
+            const container = document.createElement('div'); container.className = 'custom-select-container';
+            const input = document.createElement('div'); input.className = 'custom-select-input text-sm'; input.tabIndex = 0; container.appendChild(input);
+            const optionsDiv = document.createElement('div'); optionsDiv.className = 'custom-select-options';
             const optionsList = document.createElement('div'); optionsList.className = 'options-list'; optionsDiv.appendChild(optionsList);
+            container.appendChild(optionsDiv);
             parentElement.appendChild(container);
-            const dropdown = setupCustomDropdown(container, input, optionsDiv, optionsList, 'Status', statusOptions, (status) => updateRouteStatusOnServer(routeId, status), false);
+
+            const dropdown = setupCustomDropdown(container, input, optionsDiv, optionsList, 'Status', statusOptions, (status) => {
+                input.textContent = status || 'Status'; // Aktualisiert die Anzeige
+                updateRouteStatusOnServer(routeId, status);
+            }, false);
             if (dropdown) dropdown.setSelectedValue(initialStatus);
         }
 
-        // Server Update Funktionen
         async function updateCatchOnServer(playerId, routeId, pokemonName) {
             try { await fetch('/api/update_catch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName }) }); } catch (error) { console.error('Update fehlgeschlagen:', error); }
         }
@@ -229,30 +166,26 @@
             try { await fetch('/api/update_route_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: routeId, status_text: status }) }); } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
         }
 
-        // --- Haupt-Rendering-Funktionen ---
         async function fetchDataAndRenderSummary() {
-            noDataMessage.classList.remove('hidden');
             try {
                 const response = await fetch('/api/data'); if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                 const data = await response.json();
-                players = data.players; routes = data.routes; catches = data.catches; globalOrders = data.global_orders; levelCaps = data.level_caps; allPokemonNames = data.all_pokemon_names || [];
+                players = data.players; routes = data.routes; catches = data.catches; globalOrders = data.global_orders; levelCaps = data.level_caps; 
+                allPokemonData = data.all_pokemon_data || []; // NEU: Nutzt die neuen Daten
                 renderSummaryTable();
                 renderSummaryLevelCap();
                 noDataMessage.classList.toggle('hidden', players.length > 0 || routes.length > 0);
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
-                noDataMessage.textContent = 'Fehler beim Laden der Daten. Server möglicherweise nicht erreichbar.';
+                noDataMessage.textContent = 'Fehler beim Laden der Daten. Server nicht erreichbar.';
                 noDataMessage.classList.remove('hidden');
             }
         }
         
         function renderSummaryTable() {
             summaryTableContainer.innerHTML = '';
-            const table = document.createElement('table');
-            table.className = 'min-w-full bg-white border-collapse';
-
-            const thead = table.createTHead();
-            thead.className = 'bg-blue-100';
+            const table = document.createElement('table'); table.className = 'min-w-full bg-white border-collapse';
+            const thead = table.createTHead(); thead.className = 'bg-blue-100';
             const headerRow = thead.insertRow();
             const headers = ['Route', ...players.map(p => p.name), 'Status'];
             headers.forEach(text => {
@@ -264,21 +197,17 @@
             
             const tbody = table.createTBody();
             routes.forEach(route => {
-                const row = tbody.insertRow();
-                row.id = `summary-route-row-${route.id}`;
-                updateRouteRowColor(row, route.status); // GEÄNDERT: Übergibt die ganze Zeile an die Farb-Funktion
-
+                const row = tbody.insertRow(); row.id = `summary-route-row-${route.id}`;
+                updateRouteRowColor(row, route.status);
                 const routeCell = row.insertCell();
                 routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 font-medium';
                 routeCell.textContent = route.name;
-
                 players.forEach(player => {
                     const playerCell = row.insertCell();
-                    playerCell.className = 'py-1 px-2 border-b border-x border-gray-300';
+                    playerCell.className = 'py-1 px-2 border-b border-x border-gray-300 w-24';
                     const catchedPoke = catches.find(c => c.player_id === player.id && c.route_id === route.id);
                     createPokemonDropdownSummary(playerCell, catchedPoke ? catchedPoke.pokemon_name : null, player.id, route.id);
                 });
-
                 const statusCell = row.insertCell();
                 statusCell.className = 'py-1 px-2 border-b border-x border-gray-300';
                 createStatusDropdownSummary(statusCell, route.status, route.id);
@@ -286,24 +215,16 @@
             summaryTableContainer.appendChild(table);
         }
 
-        // GEÄNDERT: Nimmt jetzt die ganze Zeile (row) statt nur einer Zelle (cell)
         function updateRouteRowColor(row, status) {
             row.classList.remove('route-status-orange', 'route-status-red');
-            if (status === "Death Link" || status === "No Catch") {
-                row.classList.add('route-status-orange');
-            } else if (status && status.startsWith("Death (")) {
-                row.classList.add('route-status-red');
-            }
+            if (status === "Death Link" || status === "No Catch") { row.classList.add('route-status-orange'); } 
+            else if (status && status.startsWith("Death (")) { row.classList.add('route-status-red'); }
         }
 
         function renderSummaryLevelCap() {
             levelCaps.sort((a, b) => a.order_number - b.order_number);
-            let lastObtainedOrder = globalOrders.filter(go => go.is_obtained).sort((a,b) => b.order_number - a.order_number)[0];
             let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
-             if (!nextLevelCap && levelCaps.length > 0) {
-                 nextLevelCap = levelCaps[levelCaps.length - 1];
-             }
-
+            if (!nextLevelCap && levelCaps.length > 0) { nextLevelCap = levelCaps[levelCaps.length - 1]; }
             if (nextLevelCap) {
                 summaryCurrentLevelCapMax.textContent = nextLevelCap.max_level;
                 summaryCurrentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
@@ -313,35 +234,11 @@
             }
         }
 
-        // --- SocketIO Event Listener für granulare Updates ---
         socket.on('connect', () => { console.log('Verbunden (Kurzansicht)'); fetchDataAndRenderSummary(); });
         socket.on('disconnect', () => console.log('Verbindung getrennt (Kurzansicht)'));
-
-        ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'global_order_toggled'].forEach(event => {
+        ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'global_order_toggled', 'catch_updated', 'route_status_updated'].forEach(event => {
             socket.on(event, fetchDataAndRenderSummary);
         });
-        
-        socket.on('catch_updated', (data) => {
-            console.log('Granulares Fang-Update:', data);
-            let catchEntry = catches.find(c => c.player_id === data.player_id && c.route_id === data.route_id);
-            if(catchEntry) catchEntry.pokemon_name = data.pokemon_name; else catches.push(data);
-            const inputElement = document.getElementById(`pokemon-input-summary-${data.player_id}-${data.route_id}`);
-            if (inputElement) inputElement.textContent = data.pokemon_name || 'Pokémon';
-        });
-        
-        socket.on('route_status_updated', (data) => {
-            console.log('Granulares Status-Update:', data);
-            let routeEntry = routes.find(r => r.id === data.route_id);
-            if(routeEntry) routeEntry.status = data.status_text;
-            
-            const statusInputElement = document.getElementById(`status-dropdown-summary-input-${data.route_id}`);
-            if (statusInputElement) statusInputElement.textContent = data.status_text || 'Status';
-            
-            // GEÄNDERT: Wählt die ganze Zeile (<tr>) aus, um die Farbe zu ändern, nicht nur die erste Zelle
-            const routeRow = document.querySelector(`#summary-route-row-${data.route_id}`);
-            if(routeRow) updateRouteRowColor(routeRow, data.status_text);
-        });
-
     </script>
 </body>
 </html>

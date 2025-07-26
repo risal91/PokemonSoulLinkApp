@@ -52,12 +52,16 @@ def _load_json_data_internal(filename):
 
 def reload_app_configs():
     """Lädt die globalen Konfigurationen (Routen, Pokemon-Namen) neu."""
-    print("Reloading application configurations (ALL_ROUTES, ALL_POKEMON_NAMES)...")
+    print("Reloading application configurations...")
     _app_config_data["ALL_ROUTES"] = [item['name'] for item in _load_json_data_internal('routes.json')]
-    _app_config_data["ALL_POKEMON_NAMES"] = [item['name'] for item in _load_json_data_internal('pokemon_names.json')]
+    
+    # NEU: Lädt die komplette Liste von Pokémon-Objekten (ID und Name)
+    _app_config_data["ALL_POKEMON_DATA"] = _load_json_data_internal('pokemon_names.json')
+    # ALT: Extrahiert nur die Namen für die index.html, damit diese nicht kaputt geht
+    _app_config_data["ALL_POKEMON_NAMES"] = [p['name'] for p in _app_config_data.get("ALL_POKEMON_DATA", [])]
+    
     print(
-        f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data['ALL_POKEMON_NAMES'])} pokemon names.")
-
+        f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data['ALL_POKEMON_DATA'])} pokemon data entries.")
 
 def reload_level_caps_from_json():
     """Liest level_caps.json und aktualisiert die LevelCap-Tabelle in der Datenbank."""
@@ -154,7 +158,8 @@ def get_all_data():
         'catches': catches_data,
         'global_orders': global_orders_data,
         'level_caps': level_caps_data,
-        'all_pokemon_names': _app_config_data["ALL_POKEMON_NAMES"],
+        'all_pokemon_names': _app_config_data["ALL_POKEMON_NAMES"], # Für index.html
+        'all_pokemon_data': _app_config_data.get("ALL_POKEMON_DATA", []), # NEU für summary.html
         'all_route_names': _app_config_data["ALL_ROUTES"],
         'saved_databases': saved_dbs,
     })
