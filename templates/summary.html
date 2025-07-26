@@ -48,6 +48,9 @@
         let currentZoom = 1.0;
         
         const mainContentWrapper = document.querySelector('.main-content-wrapper');
+        const summaryLevelCapDisplay = document.getElementById('summaryLevelCapDisplay');
+        const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
+        const summaryCurrentLevelCapAdjusted = document.getElementById('summaryCurrentLevelCapAdjusted');
 
         function applyZoom() {
             mainContentWrapper.style.transform = `scale(${currentZoom})`;
@@ -61,6 +64,10 @@
             try { await fetch('/api/update_catch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName }) }); } catch (error) { console.error('Update fehlgeschlagen:', error); }
         }
 
+        async function updateRouteStatusOnServer(routeId, status) {
+            try { await fetch('/api/update_route_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: routeId, status_text: status }) }); } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
+        }
+
         function createPokemonDropdownSummary(cell, initialValue, playerId, routeId) {
             cell.innerHTML = `
                 <div id="icon-container-${playerId}-${routeId}" class="pokemon-icon-display"></div>
@@ -70,7 +77,6 @@
             const select = cell.querySelector(`#pokemon-select-${playerId}-${routeId}`);
             const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
 
-            // Dropdown füllen
             select.innerHTML = '<option value="">-</option>';
             allPokemonData.forEach(p => {
                 const option = document.createElement('option');
@@ -79,7 +85,6 @@
                 select.appendChild(option);
             });
 
-            // Update-Funktion für Icon und Auswahl
             const updateSelection = (pokemonName) => {
                 select.value = pokemonName || "";
                 iconContainer.innerHTML = '';
@@ -91,15 +96,36 @@
                 }
             };
 
-            // Event Listener
             select.addEventListener('change', () => {
                 const newName = select.value;
                 updateSelection(newName);
                 updateCatchOnServer(playerId, routeId, newName);
             });
             
-            // Initialen Wert setzen
             updateSelection(initialValue);
+        }
+
+        function createStatusDropdownSummary(cell, initialValue, routeId) {
+            const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
+            const select = document.createElement('select');
+            select.className = 'w-full p-1 border rounded-md text-sm';
+
+            select.innerHTML = '<option value="">-</option>';
+            statusOptions.forEach(status => {
+                if (status === "") return;
+                const option = document.createElement('option');
+                option.value = status;
+                option.textContent = status;
+                select.appendChild(option);
+            });
+
+            select.value = initialValue || "";
+
+            select.addEventListener('change', () => {
+                updateRouteStatusOnServer(routeId, select.value);
+            });
+            
+            cell.appendChild(select);
         }
 
         async function fetchDataAndRenderSummary() {
@@ -113,6 +139,7 @@
                 allPokemonData = data.all_pokemon_data || [];
 
                 renderSummaryTable();
+                renderSummaryLevelCap();
                 
                 document.getElementById('noDataMessage').classList.toggle('hidden', players.length > 0 || routes.length > 0);
             } catch (error) {
@@ -128,17 +155,17 @@
             const table = document.createElement('table');
             table.className = 'min-w-full bg-white border-collapse';
 
-            let playerHeaders = players.map(p => `<th class="py-2 px-3 border-b-2 border-x border-gray-300 text-left text-sm font-semibold text-gray-700 uppercase">${p.name}</th>`).join('');
-            table.innerHTML = `
-                <thead class="bg-blue-100"><tr>
-                    <th class="py-2 px-3 border-b-2 border-x border-gray-300 text-left text-sm font-semibold text-gray-700 uppercase">Route</th>
-                    ${playerHeaders}
-                </tr></thead>
-                <tbody></tbody>`;
+            const headers = ['Route', ...players.map(p => p.name), 'Status'];
+            let headerHTML = headers.map(text => `<th class="py-2 px-3 border-b-2 border-x border-gray-300 text-left text-sm font-semibold text-gray-700 uppercase">${text}</th>`).join('');
+            
+            table.innerHTML = `<thead class="bg-blue-100"><tr>${headerHTML}</tr></thead><tbody></tbody>`;
             
             const tbody = table.querySelector('tbody');
             routes.forEach(route => {
                 const row = tbody.insertRow();
+                row.id = `summary-route-row-${route.id}`;
+                updateRouteRowColor(row, route.status);
+
                 const routeCell = row.insertCell();
                 routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 font-medium';
                 routeCell.textContent = route.name;
@@ -149,8 +176,35 @@
                     const catchedPoke = catches.find(c => c.player_id === player.id && c.route_id === route.id);
                     createPokemonDropdownSummary(playerCell, catchedPoke ? catchedPoke.pokemon_name : null, player.id, route.id);
                 });
+
+                const statusCell = row.insertCell();
+                statusCell.className = 'py-1 px-2 border-b border-x border-gray-300';
+                createStatusDropdownSummary(statusCell, route.status, route.id);
             });
             container.appendChild(table);
+        }
+
+        function updateRouteRowColor(row, status) {
+            row.classList.remove('route-status-orange', 'route-status-red');
+            if (status === "Death Link" || status === "No Catch") { row.classList.add('route-status-orange'); } 
+            else if (status && status.startsWith("Death (")) { row.classList.add('route-status-red'); }
+        }
+
+        function renderSummaryLevelCap() {
+            levelCaps.sort((a, b) => a.order_number - b.order_number);
+            let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
+            
+            if (!nextLevelCap && levelCaps.length > 0 && globalOrders.every(go => go.is_obtained)) {
+                 nextLevelCap = levelCaps[levelCaps.length - 1];
+            }
+
+            if (nextLevelCap) {
+                summaryCurrentLevelCapMax.textContent = nextLevelCap.max_level;
+                summaryCurrentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
+                summaryLevelCapDisplay.classList.remove('hidden');
+            } else {
+                summaryLevelCapDisplay.classList.add('hidden');
+            }
         }
 
         socket.on('connect', () => { console.log('Verbunden (Kurzansicht)'); fetchDataAndRenderSummary(); });
