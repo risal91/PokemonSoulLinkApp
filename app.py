@@ -27,10 +27,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'soul_link_ch
 
 
 # --- Globale Config-Verwaltung ---
-_app_config_data = {
-    "ALL_ROUTES": [],
-    "ALL_POKEMON_NAMES": []
-}
+_app_config_data = {}
 
 
 def _load_json_data_internal(filename):
@@ -53,17 +50,18 @@ def _load_json_data_internal(filename):
 def reload_app_configs():
     """Lädt die globalen Konfigurationen (Routen, Pokemon-Namen) neu."""
     print("Reloading application configurations...")
-    _app_config_data["ALL_ROUTES"] = [item['name'] for item in _load_json_data_internal('routes.json')]
+    _app_config_data["ALL_ROUTES"] = [item.get('name') for item in _load_json_data_internal('routes.json') if item.get('name')]
     
     # Lädt die komplette Liste von Pokémon-Objekten (ID und Name)
     all_pokemon_data = _load_json_data_internal('pokemon_names.json')
     _app_config_data["ALL_POKEMON_DATA"] = all_pokemon_data
     
     # Extrahiert nur die Namen für die index.html, damit diese weiterhin funktioniert
-    _app_config_data["ALL_POKEMON_NAMES"] = [p['name'] for p in all_pokemon_data if 'name' in p]
+    _app_config_data["ALL_POKEMON_NAMES"] = [p.get('name') for p in all_pokemon_data if p.get('name')]
     
     print(
-        f"Loaded {len(_app_config_data['ALL_ROUTES'])} routes and {len(_app_config_data.get('ALL_POKEMON_DATA', []))} pokemon data entries.")
+        f"Loaded {len(_app_config_data.get('ALL_ROUTES', []))} routes and {len(_app_config_data.get('ALL_POKEMON_DATA', []))} pokemon data entries.")
+
 
 def reload_level_caps_from_json():
     """Liest level_caps.json und aktualisiert die LevelCap-Tabelle in der Datenbank."""
@@ -75,10 +73,8 @@ def reload_level_caps_from_json():
             print("Warning: level_caps.json is empty or could not be loaded. No changes to level caps in DB.")
             return
 
-        # Alte Level-Caps löschen, um Duplikate zu vermeiden
         session.query(LevelCap).delete()
 
-        # Neue Level-Caps aus der JSON-Datei hinzufügen
         for cap_data in level_caps_data:
             new_cap = LevelCap(
                 name=cap_data.get('name'),
@@ -124,48 +120,42 @@ def summary():
 @app.route('/api/data')
 def get_all_data():
     session = get_db_session()
-    routes = session.query(Route).order_by(Route.order).all()
-    players = session.query(Player).all()
-    catches = session.query(PokemonCatch).all()
-    global_orders = session.query(GlobalOrder).all()
-    level_caps = session.query(LevelCap).all()
-
-    players_data = [{'id': p.id, 'name': p.name} for p in players]
-    routes_data = [{'id': r.id, 'name': r.name, 'status': r.status, 'order': r.order} for r in routes]
-    catches_data = [
-        {'player_id': c.player_id, 'route_id': c.route_id, 'pokemon_name': c.pokemon_name}
-        for c in catches
-    ]
-    global_orders_data = [
-        {'order_number': go.order_number, 'is_obtained': go.is_obtained}
-        for go in global_orders
-    ]
-    level_caps_data = [
-        {'name': lc.name, 'order_number': lc.order_number, 'max_level': lc.max_level,
-         'adjusted_level': lc.adjusted_level}
-        for lc in level_caps
-    ]
-
-    session.close()
-
-    saved_dbs = []
     try:
-        saved_dbs = [f for f in os.listdir(SAVES_DIR) if f.endswith('.db')]
-    except Exception as e:
-        print(f"Fehler beim Lesen des Save-Verzeichnisses: {e}")
+        routes = session.query(Route).order_by(Route.order).all()
+        players = session.query(Player).all()
+        catches = session.query(PokemonCatch).all()
+        global_orders = session.query(GlobalOrder).all()
+        level_caps = session.query(LevelCap).all()
 
-    # Die .get() Methode verhindert Abstürze, falls ein Schlüssel fehlt
-    return jsonify({
-        'players': players_data,
-        'routes': routes_data,
-        'catches': catches_data,
-        'global_orders': global_orders_data,
-        'level_caps': level_caps_data,
-        'all_pokemon_names': _app_config_data.get("ALL_POKEMON_NAMES", []),   # Für index.html
-        'all_pokemon_data': _app_config_data.get("ALL_POKEMON_DATA", []),    # NEU für summary.html
-        'all_route_names': _app_config_data.get("ALL_ROUTES", []),
-        'saved_databases': saved_dbs,
-    })
+        players_data = [{'id': p.id, 'name': p.name} for p in players]
+        routes_data = [{'id': r.id, 'name': r.name, 'status': r.status, 'order': r.order} for r in routes]
+        catches_data = [{'player_id': c.player_id, 'route_id': c.route_id, 'pokemon_name': c.pokemon_name} for c in catches]
+        global_orders_data = [{'order_number': go.order_number, 'is_obtained': go.is_obtained} for go in global_orders]
+        level_caps_data = [{'name': lc.name, 'order_number': lc.order_number, 'max_level': lc.max_level, 'adjusted_level': lc.adjusted_level} for lc in level_caps]
+        
+        saved_dbs = []
+        try:
+            saved_dbs = [f for f in os.listdir(SAVES_DIR) if f.endswith('.db')]
+        except Exception as e:
+            print(f"Error reading saves directory: {e}")
+
+        # Die .get() Methode verhindert Abstürze, falls ein Schlüssel fehlt
+        return jsonify({
+            'players': players_data,
+            'routes': routes_data,
+            'catches': catches_data,
+            'global_orders': global_orders_data,
+            'level_caps': level_caps_data,
+            'all_pokemon_names': _app_config_data.get("ALL_POKEMON_NAMES", []),
+            'all_pokemon_data': _app_config_data.get("ALL_POKEMON_DATA", []),
+            'all_route_names': _app_config_data.get("ALL_ROUTES", []),
+            'saved_databases': saved_dbs,
+        })
+    except Exception as e:
+        print(f"CRITICAL ERROR in /api/data: {e}")
+        return jsonify({"error": "Ein schwerer Serverfehler ist aufgetreten."}), 500
+    finally:
+        session.close()
 
 
 @app.route('/api/add_player', methods=['POST'])
@@ -414,7 +404,6 @@ def save_database_state():
 
     dest_path = os.path.join(SAVES_DIR, f"{safe_filename}.db")
 
-    # Spielstand wird nun überschrieben, wenn der Name existiert
     try:
         shutil.copy(DB_PATH, dest_path)
         socketio.emit('database_saved')
@@ -459,7 +448,6 @@ def full_db_reset():
 
 @app.route('/api/config/<filename>', methods=['GET'])
 def get_config_file(filename):
-    """Gibt den Inhalt einer JSON-Konfigurationsdatei zurück."""
     if filename not in ['routes.json', 'pokemon_names.json', 'level_caps.json']:
         return jsonify({'error': 'Unbekannte Konfigurationsdatei'}), 400
 
@@ -476,7 +464,6 @@ def get_config_file(filename):
 
 @app.route('/api/config/<filename>', methods=['POST'])
 def save_config_file(filename):
-    """Speichert den Inhalt einer JSON-Konfigurationsdatei."""
     if filename not in ['routes.json', 'pokemon_names.json', 'level_caps.json']:
         return jsonify({'error': 'Unbekannte Konfigurationsdatei'}), 400
 
@@ -491,11 +478,10 @@ def save_config_file(filename):
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(content)
 
-        # Nach dem Speichern die entsprechende Konfiguration neu laden
         if filename in ['routes.json', 'pokemon_names.json']:
             reload_app_configs()
         elif filename == 'level_caps.json':
-            reload_level_caps_from_json() # Level-Caps in der DB aktualisieren
+            reload_level_caps_from_json()
 
         socketio.emit('config_saved', {'filename': filename})
         return jsonify({'message': f'Datei {filename} erfolgreich gespeichert.'}), 200
@@ -506,9 +492,8 @@ def save_config_file(filename):
  
 @app.route('/api/reload_configs', methods=['POST'])
 def reload_configs_api():
-    """Trigger zum Neuladen der Konfigurationsdateien."""
     reload_app_configs()
-    reload_level_caps_from_json()  # Auch die Level-Caps aus der Datei neu in die DB laden
+    reload_level_caps_from_json()
     socketio.emit('configs_reloaded')
     return jsonify({'message': 'App-Konfigurationen neu geladen.'}), 200
 
