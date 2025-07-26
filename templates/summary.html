@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class=""> 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,28 +8,44 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f0f4f8; color: #2d3748; }
-        .main-content-wrapper { transform-origin: top center; }
-        .container { max-width: 1400px; }
-        .level-cap-display-summary { background-color: #d1fae5; color: #065f46; border: 1px solid #34d399; }
-        .route-status-orange, .route-status-orange td { background-color: #ffedd5 !important; }
-        .route-status-red, .route-status-red td { background-color: #fee2e2 !important; }
+        body { font-family: 'Inter', sans-serif; }
+        .main-content-wrapper { transform-origin: top center; transition: background-color 0.3s ease, color 0.3s ease; }
+        .container { max-width: 1400px; transition: background-color 0.3s ease; }
         .pokemon-cell { text-align: center; }
         .pokemon-icon-display { height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
-        .pokemon-icon-display img { max-height: 150%; max-width: 150%; object-fit: contain; }
+        .pokemon-icon-display img { max-height: 100%; max-width: 100%; object-fit: contain; }
+
+        /* NEU: Gray Mode Styles */
+        .gray-mode body { background-color: #4b5563; color: #e5e7eb; }
+        .gray-mode .container { background-color: #374151; }
+        .gray-mode h1 { color: #d1d5db; }
+        .gray-mode nav a, .gray-mode nav button { background-color: #4b5563; color: #f9fafb; }
+        .gray-mode nav a:hover, .gray-mode nav button:hover { background-color: #6b7280; }
+        .gray-mode .level-cap-display-summary { background-color: #1f2937; color: #a7f3d0; border-color: #34d399; }
+        .gray-mode th { background-color: #1f2937; border-color: #4b5563; color: #d1d5db; }
+        .gray-mode td { border-color: #4b5563; }
+        .gray-mode select { background-color: #6b7280; color: #f3f4f6; border-color: #9ca3af; }
+        .gray-mode .route-status-orange, .gray-mode .route-status-orange td { background-color: #7c2d12 !important; color: #fed7aa !important; }
+        .gray-mode .route-status-red, .gray-mode .route-status-red td { background-color: #991b1b !important; color: #fecaca !important; }
     </style>
 </head>
-<body class="bg-gray-100 p-6">
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
     <div class="main-content-wrapper">
-        <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl">
-            <h1 class="text-4xl font-bold text-center text-blue-800 mb-8">Soul Link Kurzansicht</h1>
+        <div class="container mx-auto p-8 bg-white rounded-lg shadow-xl dark:bg-gray-800">
+            <h1 class="text-4xl font-bold text-center text-blue-800 mb-8 dark:text-blue-300">Soul Link Kurzansicht</h1>
             <nav class="text-center mb-6 flex justify-center items-center gap-4">
-                <a href="/" class="text-blue-600 hover:text-blue-800 text-lg font-medium px-4 py-2 rounded-md bg-blue-100 hover:bg-blue-200 transition">Zur Hauptansicht</a>
-                <button id="zoomOutBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md">-</button>
-                <button id="zoomInBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md">+</button>
-                <button id="resetZoomBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md">Reset</button>
+                <a href="/" class="text-blue-600 hover:text-blue-800 text-lg font-medium px-4 py-2 rounded-md bg-blue-100 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:hover:bg-blue-800 transition">Zur Hauptansicht</a>
+                <button id="zoomOutBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">-</button>
+                <button id="zoomInBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">+</button>
+                <button id="resetZoomBtn" class="bg-gray-200 hover:bg-gray-300 font-bold py-2 px-4 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">Reset</button>
+                
+                <button id="themeToggleBtn" class="bg-gray-200 hover:bg-gray-300 font-bold p-2 rounded-md dark:bg-gray-700 dark:hover:bg-gray-600">
+                    <svg id="theme-icon-light" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <svg id="theme-icon-gray" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a4 4 0 014-4h10a4 4 0 014 4v12a4 4 0 01-4 4H7z" /></svg>
+                    <svg id="theme-icon-dark" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                </button>
             </nav>
-            <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-8 rounded-md shadow-inner hidden level-cap-display-summary">
+            <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-8 rounded-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
                 Nächstes Level Cap: <span id="summaryCurrentLevelCapMax"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted"></span>)
             </div>
             <div id="summaryTableContainer" class="overflow-x-auto"></div>
@@ -39,18 +55,10 @@
 
     <script>
         const socket = io();
-        let allPokemonData = [];
-        let players = [];
-        let routes = [];
-        let catches = [];
-        let globalOrders = [];
-        let levelCaps = [];
+        let allPokemonData = [], players = [], routes = [], catches = [], globalOrders = [], levelCaps = [];
         let currentZoom = 1.0;
         
         const mainContentWrapper = document.querySelector('.main-content-wrapper');
-        const summaryLevelCapDisplay = document.getElementById('summaryLevelCapDisplay');
-        const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
-        const summaryCurrentLevelCapAdjusted = document.getElementById('summaryCurrentLevelCapAdjusted');
 
         function applyZoom() {
             mainContentWrapper.style.transform = `scale(${currentZoom})`;
@@ -63,7 +71,6 @@
         async function updateCatchOnServer(playerId, routeId, pokemonName) {
             try { await fetch('/api/update_catch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ player_id: playerId, route_id: routeId, pokemon_name: pokemonName }) }); } catch (error) { console.error('Update fehlgeschlagen:', error); }
         }
-
         async function updateRouteStatusOnServer(routeId, status) {
             try { await fetch('/api/update_route_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: routeId, status_text: status }) }); } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
         }
@@ -71,9 +78,8 @@
         function createPokemonDropdownSummary(cell, initialValue, playerId, routeId) {
             cell.innerHTML = `
                 <div id="icon-container-${playerId}-${routeId}" class="pokemon-icon-display"></div>
-                <select id="pokemon-select-${playerId}-${routeId}" class="w-full p-1 border rounded-md text-sm"></select>
+                <select id="pokemon-select-${playerId}-${routeId}" class="w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600"></select>
             `;
-
             const select = cell.querySelector(`#pokemon-select-${playerId}-${routeId}`);
             const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
 
@@ -97,18 +103,17 @@
             };
 
             select.addEventListener('change', () => {
-                const newName = select.value;
-                updateSelection(newName);
-                updateCatchOnServer(playerId, routeId, newName);
+                updateSelection(select.value);
+                updateCatchOnServer(playerId, routeId, select.value);
             });
             
             updateSelection(initialValue);
         }
-
+        
         function createStatusDropdownSummary(cell, initialValue, routeId) {
             const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
             const select = document.createElement('select');
-            select.className = 'w-full p-1 border rounded-md text-sm';
+            select.className = 'w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600';
 
             select.innerHTML = '<option value="">-</option>';
             statusOptions.forEach(status => {
@@ -118,13 +123,8 @@
                 option.textContent = status;
                 select.appendChild(option);
             });
-
             select.value = initialValue || "";
-
-            select.addEventListener('change', () => {
-                updateRouteStatusOnServer(routeId, select.value);
-            });
-            
+            select.addEventListener('change', () => updateRouteStatusOnServer(routeId, select.value));
             cell.appendChild(select);
         }
 
@@ -133,14 +133,11 @@
                 const response = await fetch('/api/data');
                 if (!response.ok) throw new Error(`HTTP error ${response.status}`);
                 const data = await response.json();
-                
                 players = data.players; routes = data.routes; catches = data.catches;
                 globalOrders = data.global_orders; levelCaps = data.level_caps; 
                 allPokemonData = data.all_pokemon_data || [];
-
                 renderSummaryTable();
                 renderSummaryLevelCap();
-                
                 document.getElementById('noDataMessage').classList.toggle('hidden', players.length > 0 || routes.length > 0);
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
@@ -153,32 +150,29 @@
             const container = document.getElementById('summaryTableContainer');
             container.innerHTML = '';
             const table = document.createElement('table');
-            table.className = 'min-w-full bg-white border-collapse';
-
+            table.className = 'min-w-full bg-white border-collapse dark:bg-gray-800';
             const headers = ['Route', ...players.map(p => p.name), 'Status'];
-            let headerHTML = headers.map(text => `<th class="py-2 px-3 border-b-2 border-x border-gray-300 text-left text-sm font-semibold text-gray-700 uppercase">${text}</th>`).join('');
-            
-            table.innerHTML = `<thead class="bg-blue-100"><tr>${headerHTML}</tr></thead><tbody></tbody>`;
+            let headerHTML = headers.map(text => `<th class="py-2 px-3 border-b-2 border-x border-gray-300 dark:border-gray-600 text-left text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase">${text}</th>`).join('');
+            table.innerHTML = `<thead class="bg-blue-100 dark:bg-blue-900/50"><tr>${headerHTML}</tr></thead><tbody></tbody>`;
             
             const tbody = table.querySelector('tbody');
             routes.forEach(route => {
                 const row = tbody.insertRow();
                 row.id = `summary-route-row-${route.id}`;
                 updateRouteRowColor(row, route.status);
-
                 const routeCell = row.insertCell();
-                routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 font-medium';
+                routeCell.className = 'py-2 px-3 border-b border-x border-gray-300 dark:border-gray-600 font-medium';
                 routeCell.textContent = route.name;
 
                 players.forEach(player => {
                     const playerCell = row.insertCell();
-                    playerCell.className = 'py-1 px-2 border-b border-x border-gray-300 w-40 pokemon-cell';
+                    playerCell.className = 'py-1 px-2 border-b border-x border-gray-300 dark:border-gray-600 w-40 pokemon-cell';
                     const catchedPoke = catches.find(c => c.player_id === player.id && c.route_id === route.id);
                     createPokemonDropdownSummary(playerCell, catchedPoke ? catchedPoke.pokemon_name : null, player.id, route.id);
                 });
 
                 const statusCell = row.insertCell();
-                statusCell.className = 'py-1 px-2 border-b border-x border-gray-300';
+                statusCell.className = 'py-1 px-2 border-b border-x border-gray-300 dark:border-gray-600';
                 createStatusDropdownSummary(statusCell, route.status, route.id);
             });
             container.appendChild(table);
@@ -191,13 +185,15 @@
         }
 
         function renderSummaryLevelCap() {
+            const summaryLevelCapDisplay = document.getElementById('summaryLevelCapDisplay');
+            const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
+            const summaryCurrentLevelCapAdjusted = document.getElementById('summaryCurrentLevelCapAdjusted');
+
             levelCaps.sort((a, b) => a.order_number - b.order_number);
             let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
-            
             if (!nextLevelCap && levelCaps.length > 0 && globalOrders.every(go => go.is_obtained)) {
                  nextLevelCap = levelCaps[levelCaps.length - 1];
             }
-
             if (nextLevelCap) {
                 summaryCurrentLevelCapMax.textContent = nextLevelCap.max_level;
                 summaryCurrentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
@@ -206,7 +202,47 @@
                 summaryLevelCapDisplay.classList.add('hidden');
             }
         }
+        
+        // NEU: Theme (Dark/Gray Mode) Umschalter
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIcons = {
+            light: document.getElementById('theme-icon-light'),
+            gray: document.getElementById('theme-icon-gray'),
+            dark: document.getElementById('theme-icon-dark'),
+        };
+        const themes = ['light', 'gray', 'dark'];
+        let currentThemeIndex = 0;
 
+        const applyTheme = (theme) => {
+            const html = document.documentElement;
+            html.classList.remove('dark', 'gray-mode');
+            Object.values(themeIcons).forEach(icon => icon.classList.add('hidden'));
+
+            if (theme === 'dark') {
+                html.classList.add('dark');
+                themeIcons.dark.classList.remove('hidden');
+            } else if (theme === 'gray') {
+                html.classList.add('gray-mode');
+                themeIcons.gray.classList.remove('hidden');
+            } else {
+                themeIcons.light.classList.remove('hidden');
+            }
+            localStorage.setItem('theme', theme);
+        };
+
+        themeToggleBtn.addEventListener('click', () => {
+            currentThemeIndex = (currentThemeIndex + 1) % themes.length;
+            applyTheme(themes[currentThemeIndex]);
+        });
+
+        // Beim Laden der Seite das gespeicherte Theme anwenden
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme && themes.includes(savedTheme)) {
+            currentThemeIndex = themes.indexOf(savedTheme);
+            applyTheme(savedTheme);
+        }
+
+        // Socket.IO Events
         socket.on('connect', () => { console.log('Verbunden (Kurzansicht)'); fetchDataAndRenderSummary(); });
         socket.on('disconnect', () => console.log('Verbindung getrennt (Kurzansicht)'));
         ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'global_order_toggled', 'catch_updated', 'route_status_updated'].forEach(event => {
