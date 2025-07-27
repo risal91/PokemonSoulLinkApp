@@ -6,6 +6,8 @@
     <title>Soul Link Kurzansicht</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -101,36 +103,62 @@
             try { await fetch('/api/update_route_status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route_id: routeId, status_text: status }) }); } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
         }
 
-        function createPokemonDropdownSummary(cell, initialValue, playerId, routeId) {
-            cell.innerHTML = `
-                <div id="icon-container-${playerId}-${routeId}" class="pokemon-icon-display"></div>
-                <select id="pokemon-select-${playerId}-${routeId}" class="w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600"></select>
-            `;
-            const select = cell.querySelector(`#pokemon-select-${playerId}-${routeId}`);
-            const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
-            select.innerHTML = '<option value="">-</option>';
-            allPokemonData.forEach(p => {
-                const option = document.createElement('option');
-                option.value = p.name;
-                option.textContent = p.name;
-                select.appendChild(option);
-            });
-            const updateSelection = (pokemonName) => {
-                select.value = pokemonName || "";
-                iconContainer.innerHTML = '';
-                if (pokemonName) {
-                    const pokemon = allPokemonData.find(p => p.name === pokemonName);
-                    if (pokemon) {
-                        iconContainer.innerHTML = `<img src="/static/icons/${pokemon.id}.png" alt="${pokemon.name}" title="${pokemon.name}">`;
-                    }
-                }
-            };
-            select.addEventListener('change', () => {
-                updateSelection(select.value);
-                updateCatchOnServer(playerId, routeId, select.value);
-            });
-            updateSelection(initialValue);
+function createPokemonDropdownSummary(cell, initialValue, playerId, routeId) {
+    // 1. Erstelle das Grundgerüst wie zuvor
+    cell.innerHTML = `
+        <div id="icon-container-${playerId}-${routeId}" class="pokemon-icon-display"></div>
+        <select id="pokemon-select-${playerId}-${routeId}" placeholder="Pokémon suchen..."></select>
+    `;
+
+    const selectEl = cell.querySelector(`#pokemon-select-${playerId}-${routeId}`);
+    const iconContainer = cell.querySelector(`#icon-container-${playerId}-${routeId}`);
+
+    // Hilfsfunktion, um Icon und Auswahl zu aktualisieren
+    const updateSelectionDisplay = (pokemonName) => {
+        iconContainer.innerHTML = '';
+        if (pokemonName) {
+            const pokemon = allPokemonData.find(p => p.name === pokemonName);
+            if (pokemon) {
+                iconContainer.innerHTML = `<img src="/static/icons/${pokemon.id}.png" alt="${pokemon.name}" title="${pokemon.name}">`;
+            }
         }
+    };
+
+    // 2. Initialisiere Tom Select auf dem <select>-Element
+    const tomselect = new TomSelect(selectEl, {
+        valueField: 'name',
+        labelField: 'name',
+        searchField: 'name',
+        options: allPokemonData,
+        create: false, // Verhindert, dass neue Einträge erstellt werden können
+        onChange: (value) => {
+            // 3. Handle die Auswahländerung
+            updateSelectionDisplay(value);
+            updateCatchOnServer(playerId, routeId, value);
+        },
+        // Optional: Rendere die Icons direkt in der Dropdown-Liste
+        render: {
+            option: function(data, escape) {
+                return `<div class="flex items-center">
+                            <img src="/static/icons/${data.id}.png" class="h-6 w-6 mr-2">
+                            <span>${escape(data.name)}</span>
+                        </div>`;
+            },
+            item: function(data, escape) {
+                 return `<div class="flex items-center">
+                            <img src="/static/icons/${data.id}.png" class="h-5 w-5 mr-1">
+                            <span>${escape(data.name)}</span>
+                        </div>`;
+            }
+        }
+    });
+
+    // 4. Setze den initialen Wert (ohne das 'onChange'-Event auszulösen)
+    if (initialValue) {
+        tomselect.setValue(initialValue, true); // Das 'true' verhindert das Auslösen des Events
+    }
+    updateSelectionDisplay(initialValue);
+}
         
         function createStatusDropdownSummary(cell, initialValue, routeId) {
             const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
