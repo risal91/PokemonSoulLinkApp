@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" class=""> 
+<html lang="de" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,24 +13,56 @@
         body { font-family: 'Inter', sans-serif; }
         .main-content-wrapper { transform-origin: top center; transition: background-color 0.3s ease, color 0.3s ease; }
         .container { max-width: 1400px; transition: background-color 0.3s ease; }
-        .pokemon-cell { text-align: center;     text-shadow: 0 0 black !important; }
+        .pokemon-cell { text-align: center; text-shadow: 0 0 black !important; }
         .pokemon-icon-display { height: 40px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
         .pokemon-icon-display img { max-height: 100%; max-width: 100%; object-fit: contain; }
 
+        /* --- NEU: STILE FÜR KLEINE ORDEN-BUTTONS --- */
+        .summary-order-button {
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.5rem;
+            border-width: 2px;
+            font-size: 0.75rem; /* kleinerer Text */
+            font-weight: 600;
+            transition: all 0.2s ease-in-out;
+            text-align: center;
+        }
+        .summary-order-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .summary-order-button.obtained {
+            background-color: #48bb78; color: white; border-color: #38a169;
+        }
+        .summary-order-button:not(.obtained) {
+            background-color: #e2e8f0; color: #4a5568; border-color: #cbd5e0;
+        }
+        .summary-order-button.next-cap-highlight {
+            border-color: #8b5cf6;
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.3);
+        }
+        .dark .summary-order-button:not(.obtained) {
+            background-color: #374151; color: #d1d5db; border-color: #4b5563;
+        }
+        .gray-mode .summary-order-button:not(.obtained) {
+             background-color: #4b5563; color: #f9fafb; border-color: #6b7280;
+        }
+        /* --- ENDE NEUE STILE --- */
+
         /* STATUS-KLASSEN FÜR LICHT-MODUS */
-        .status-gefangen, .status-gefangen td { background-color: #dcfce7 !important; } /* Hellgrün */
+        .status-gefangen, .status-gefangen td { background-color: #dcfce7 !important; }
         .status-no-catch, .status-no-catch td,
         .status-death-link, .status-death-link td { background-color: #ffedd5 !important; }
         .status-player-death, .status-player-death td { background-color: #fee2e2 !important; }
 
-        /* DARK MODE - SPEZIFISCHE STATUS-FARBEN */
+        /* DARK MODE */
         .dark body { background-color: #050505 !important;}
         .dark .status-gefangen, .dark .status-gefangen td { background-color: #14532d !important; color: #050505 !important; }
         .dark .status-no-catch, .dark .status-no-catch td { background-color: #1e3a8a !important; color: #bfdbfe !important; }
         .dark .status-death-link, .dark .status-death-link td { background-color: #92400e !important; color: #fde68a !important; }
         .dark .status-player-death, .dark .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
 
-        /* GRAY MODE STYLES */
+        /* GRAY MODE */
         .gray-mode body { background-color: #4b5563; color: #e5e7eb; }
         .gray-mode .container { background-color: #374151 }
         .gray-mode h1 { color: #d1d5db; }
@@ -62,9 +94,12 @@
                     <svg id="theme-icon-dark" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                 </button>
             </nav>
-            <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-8 rounded-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
+            <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-2 rounded-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
                 Nächstes Level Cap: <span id="summaryCurrentLevelCapMax"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted"></span>)
             </div>
+
+            <div id="summaryOrdersContainer" class="flex flex-wrap justify-center gap-2 mb-8"></div>
+
             <div id="summaryTableContainer" class="overflow-x-auto"></div>
             <div id="noDataMessage" class="hidden text-center text-gray-500 mt-10">Lade Daten...</div>
         </div>
@@ -140,7 +175,6 @@
         }
 
         function createStatusDropdownSummary(cell, initialValue, routeId) {
-            // NEU: "Gefangen" zu den Optionen hinzugefügt
             const statusOptions = ["", "Gefangen", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
             const select = document.createElement('select');
             select.className = 'w-full p-1 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600';
@@ -166,7 +200,7 @@
                 globalOrders = data.global_orders; levelCaps = data.level_caps;
                 allPokemonData = data.all_pokemon_data || [];
                 renderSummaryTable();
-                renderSummaryLevelCap();
+                renderSummaryCapsAndOrders(); // Geänderter Funktionsaufruf
                 document.getElementById('noDataMessage').classList.toggle('hidden', players.length > 0 || routes.length > 0);
             } catch (error) {
                 console.error('Fehler beim Abrufen der Daten:', error);
@@ -209,23 +243,26 @@
 
         function updateRouteRowColor(row, status) {
             row.className = '';
-            // NEU: Logik für "Gefangen" hinzugefügt
             if (status === "Gefangen") { row.classList.add('status-gefangen'); }
             else if (status === "No Catch") { row.classList.add('status-no-catch'); }
             else if (status === "Death Link") { row.classList.add('status-death-link'); }
             else if (status && status.startsWith("Death (")) { row.classList.add('status-player-death'); }
         }
 
-        function renderSummaryLevelCap() {
+        // --- NEU: Kombinierte Funktion zum Rendern von Level Cap UND Orden ---
+        function renderSummaryCapsAndOrders() {
+            // Teil 1: Level Cap rendern (wie bisher)
             const summaryLevelCapDisplay = document.getElementById('summaryLevelCapDisplay');
             const summaryCurrentLevelCapMax = document.getElementById('summaryCurrentLevelCapMax');
             const summaryCurrentLevelCapAdjusted = document.getElementById('summaryCurrentLevelCapAdjusted');
 
             levelCaps.sort((a, b) => a.order_number - b.order_number);
             let nextLevelCap = levelCaps.find(lc => !globalOrders.find(go => go.order_number === lc.order_number)?.is_obtained);
+
             if (!nextLevelCap && levelCaps.length > 0 && globalOrders.every(go => go.is_obtained)) {
                  nextLevelCap = levelCaps[levelCaps.length - 1];
             }
+
             if (nextLevelCap) {
                 summaryCurrentLevelCapMax.textContent = nextLevelCap.max_level;
                 summaryCurrentLevelCapAdjusted.textContent = nextLevelCap.adjusted_level;
@@ -233,6 +270,38 @@
             } else {
                 summaryLevelCapDisplay.classList.add('hidden');
             }
+
+            // Teil 2: Orden rendern
+            const ordersContainer = document.getElementById('summaryOrdersContainer');
+            ordersContainer.innerHTML = ''; // Container leeren
+
+            levelCaps.forEach(lc => {
+                const button = document.createElement('button');
+                // Neue CSS-Klasse für kleineres Aussehen
+                button.className = 'summary-order-button';
+                button.textContent = lc.name;
+                button.dataset.orderNumber = lc.order_number;
+
+                const globalOrder = globalOrders.find(go => go.order_number === lc.order_number);
+                if (globalOrder && globalOrder.is_obtained) {
+                    button.classList.add('obtained');
+                }
+
+                // Highlight für den nächsten Orden
+                if (nextLevelCap && lc.order_number === nextLevelCap.order_number && !button.classList.contains('obtained')) {
+                    button.classList.add('next-cap-highlight');
+                }
+
+                // Klick-Funktionalität hinzufügen
+                button.addEventListener('click', async () => {
+                    await fetch('/api/toggle_global_order', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ order_number: lc.order_number })
+                    });
+                });
+                ordersContainer.appendChild(button);
+            });
         }
 
         const themeToggleBtn = document.getElementById('themeToggleBtn');
@@ -311,6 +380,8 @@
 
         socket.on('catch_updated', handleCatchUpdated);
         socket.on('route_status_updated', handleRouteStatusUpdated);
+
+        // Bei Änderung eines Ordens alles neu laden, um Caps und Orden korrekt anzuzeigen
         socket.on('global_order_toggled', fetchDataAndRenderSummary);
 
         ['player_added', 'route_added', 'route_deleted', 'routes_reordered', 'all_data_reset', 'full_db_reset', 'configs_reloaded'].forEach(event => {
