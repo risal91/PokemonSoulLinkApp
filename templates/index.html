@@ -115,6 +115,11 @@
             background-color: #fee2e2;
             color: #b91c1c;
         }
+        /* NEU: Klasse für "Gefangen" Status */
+        .route-status-green {
+            background-color: #dcfce7;
+            color: #166534;
+        }
         textarea.json-editor {
             width: 100%;
             min-height: 200px;
@@ -282,7 +287,7 @@
         let allRouteNames = [];
         let savedDatabases = [];
 
-        let removeRouteDropdown; 
+        let removeRouteDropdown;
         let routeDropdown;
 
         function setupCustomDropdown(containerElement, inputElement, optionsElement, optionsListElement, searchPlaceholder, initialItemsArray, onSelectCallback = null, hasSearch = false) {
@@ -367,7 +372,8 @@
         }
 
         function createStatusDropdownIndex(parentElement, initialStatus, routeId) {
-            const statusOptions = ["", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
+            // NEU: "Gefangen" zu den Optionen hinzugefügt
+            const statusOptions = ["", "Gefangen", "Death Link", "No Catch", ...players.map(p => `Death (${p.name})`)];
             const container = document.createElement('div');
             container.className = 'custom-select-container';
             const input = document.createElement('div');
@@ -398,7 +404,7 @@
                 });
             } catch (error) { console.error('Status-Update fehlgeschlagen:', error); }
         }
-        
+
         function showMessage(message, type = 'info') {
             messageBox.textContent = message;
             messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
@@ -421,7 +427,7 @@
                 allPokemonNames = data.all_pokemon_names || [];
                 allRouteNames = data.all_route_names || [];
                 savedDatabases = data.saved_databases || [];
-                
+
                 const routeSelectContainer = document.getElementById('routeSelectContainer');
                 const routeSelectInput = document.getElementById('routeSelectInput');
                 const routeSelectOptions = document.getElementById('routeSelectOptions');
@@ -474,11 +480,14 @@
                 const row = catchTableBody.insertRow();
                 row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
                 row.dataset.routeId = route.id;
-                
+
                 const routeNameCell = row.insertCell();
                 routeNameCell.className = 'py-3 px-4 border-b border-gray-200 font-medium text-gray-800';
                 routeNameCell.textContent = route.name;
-                if (route.status === "Death Link" || route.status === "No Catch") { routeNameCell.classList.add('route-status-orange'); }
+
+                // NEU: Logik für die Farbgebung der Routenzelle
+                if (route.status === "Gefangen") { routeNameCell.classList.add('route-status-green'); }
+                else if (route.status === "Death Link" || route.status === "No Catch") { routeNameCell.classList.add('route-status-orange'); }
                 else if (route.status.startsWith("Death (")) { routeNameCell.classList.add('route-status-red'); }
 
                 players.forEach(player => {
