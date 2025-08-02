@@ -94,13 +94,13 @@
                     <svg id="theme-icon-dark" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
                 </button>
             </nav>
-            <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-2 rounded-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
-                Nächstes Level Cap: <span id="summaryCurrentLevelCapMax"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted"></span>)
+            <div id="sticky-header-container">
+                <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-2 rounded-t-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
+                    Nächstes Level Cap: <span id="summaryCurrentLevelCapMax"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted"></span>)
+                </div>
+
+                <div id="summaryOrdersContainer" class="flex flex-wrap justify-center gap-2 pb-4 pt-2"></div>
             </div>
-
-            <div id="summaryOrdersContainer" class="flex flex-wrap justify-center gap-2 mb-8"></div>
-
-            <div id="summaryOrdersContainer" class="flex flex-wrap justify-center gap-2 mb-8"></div>
 
             <div id="summaryTableContainer" class="overflow-x-auto"></div>
             <div id="noDataMessage" class="hidden text-center text-gray-500 mt-10">Lade Daten...</div>
