@@ -76,6 +76,22 @@
         .gray-mode .status-no-catch, .gray-mode .status-no-catch td { background-color: #1e40af !important; color: #bfdbfe !important; }
         .gray-mode .status-death-link, .gray-mode .status-death-link td { background-color: #7c2d12 !important; color: #fed7aa !important; }
         .gray-mode .status-player-death, .gray-mode .status-player-death td { background-color: #991b1b !important; color: #fecaca !important; }
+
+        #sticky-header-container {
+            position: -webkit-sticky; /* Für Safari-Kompatibilität */
+            position: sticky;
+            top: 0;
+            z-index: 20; /* Stellt sicher, dass der Header über allem liegt */
+
+            /* Hintergrundfarben für die verschiedenen Themes */
+            background-color: white; /* Standard für Light-Mode */
+        }
+        .dark #sticky-header-container {
+            background-color: #050505; /* Hintergrund für Dark-Mode */
+        }
+        .gray-mode #sticky-header-container {
+            background-color: #374151; /* Hintergrund für Gray-Mode */
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
@@ -98,7 +114,6 @@
                 <div id="summaryLevelCapDisplay" class="text-center text-2xl font-bold p-4 mb-2 rounded-t-md shadow-inner hidden level-cap-display-summary dark:bg-green-900 dark:text-green-200 dark:border-green-700">
                     Nächstes Level Cap: <span id="summaryCurrentLevelCapMax"></span> (Angepasst: <span id="summaryCurrentLevelCapAdjusted"></span>)
                 </div>
-
                 <div id="summaryOrdersContainer" class="flex flex-wrap justify-center gap-2 pb-4 pt-2"></div>
             </div>
 
